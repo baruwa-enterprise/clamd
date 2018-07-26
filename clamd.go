@@ -10,11 +10,14 @@ Clamd - Golang clamd client
 package clamd
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net"
 	"net/textproto"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,7 +27,21 @@ import (
 const (
 	defaultTimeout = 15 * time.Second
 	defaultSleep   = 1 * time.Second
+	// ChunkSize the size for chunking INSTREAM files
+	ChunkSize = 1024
 )
+
+var (
+	responseRe = regexp.MustCompile(`^(?P<filename>[^:]+):\s+(?P<signature>[^:]+ )?(?P<status>(FOUND|OK|ERROR))$`)
+)
+
+// Response is the response from the server
+type Response struct {
+	Filename  string
+	Signature string
+	Status    string
+	Raw       string
+}
 
 // A Client represents a Clamd client.
 type Client struct {
@@ -111,21 +128,27 @@ func (c *Client) Shutdown() (err error) {
 }
 
 // Scan a file or directory
-func (c *Client) Scan() {
+func (c *Client) Scan(p string) (r []Response, err error) {
+	r, err = c.fileCmd(protocol.Scan, p)
+	return
 }
 
 // ContScan a file or directory
-func (c *Client) ContScan() {
+func (c *Client) ContScan(p string) (r []Response, err error) {
+	r, err = c.fileCmd(protocol.ContScan, p)
+	return
 }
 
 // MultiScan a file or directory
-func (c *Client) MultiScan() {
-
+func (c *Client) MultiScan(p string) (r []Response, err error) {
+	r, err = c.fileCmd(protocol.MultiScan, p)
+	return
 }
 
 // InStream scan a stream
-func (c *Client) InStream() {
-
+func (c *Client) InStream(p string) (r []Response, err error) {
+	r, err = c.fileCmd(protocol.Instream, p)
+	return
 }
 
 // Fildes scan a FD
@@ -155,8 +178,17 @@ func (c *Client) End() {
 }
 
 // VersionCmds returns the supported cmds
-func (c *Client) VersionCmds() {
-
+func (c *Client) VersionCmds() (r []string, err error) {
+	var s string
+	s, err = c.basicCmd(protocol.VersionCmds)
+	p := strings.Split(s, "COMMANDS: ")
+	if len(p) != 2 {
+		err = fmt.Errorf("Invalid Server Response: %s", s)
+		return
+	}
+	s = p[1]
+	r = strings.Split(s, " ")
+	return
 }
 
 func (c *Client) dial() (conn net.Conn, err error) {
@@ -220,6 +252,111 @@ func (c *Client) basicCmd(cmd protocol.Command) (r string, err error) {
 	}
 
 	r = strings.TrimRight(b.String(), "\n")
+
+	return
+}
+
+func (c *Client) fileCmd(cmd protocol.Command, p string) (r []Response, err error) {
+	var seen bool
+	var lineb []byte
+	var conn net.Conn
+	var tc *textproto.Conn
+
+	if cmd == protocol.Instream || cmd == protocol.Fildes {
+		if _, err = os.Stat(p); os.IsNotExist(err) {
+			return
+		}
+	}
+
+	conn, err = c.dial()
+	if err != nil {
+		return
+	}
+
+	if c.cmdTimeout > 0 {
+		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
+	}
+
+	tc = textproto.NewConn(conn)
+	defer tc.Close()
+
+	id := tc.Next()
+	tc.StartRequest(id)
+	if cmd == protocol.Instream {
+		var n int
+		var f *os.File
+		f, err = os.Open(p)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+		fmt.Fprintf(tc.W, "n%s\n", cmd)
+		b := make([]byte, 4)
+		for {
+			buf := make([]byte, ChunkSize)
+			n, err = f.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					err = nil
+					break
+				}
+				return
+			}
+			if n > 0 {
+				binary.BigEndian.PutUint32(b, uint32(n))
+				_, err = tc.W.Write(b)
+				if err != nil {
+					return
+				}
+				_, err = tc.W.Write(buf[0:n])
+				if err != nil {
+					return
+				}
+				tc.W.Flush()
+			}
+		}
+		_, err = tc.W.Write([]byte{0, 0, 0, 0})
+		if err != nil {
+			return
+		}
+	} else {
+		fmt.Fprintf(tc.W, "n%s %s\n", cmd, p)
+	}
+	tc.W.Flush()
+	tc.EndRequest(id)
+
+	tc.StartResponse(id)
+	defer tc.EndResponse(id)
+
+	r = make([]Response, 1)
+	for {
+		lineb, err = tc.R.ReadBytes('\n')
+		rs := Response{}
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
+			break
+		}
+
+		mb := responseRe.FindSubmatch(bytes.TrimRight(lineb, "\n"))
+		if mb == nil {
+			err = fmt.Errorf("Invalid Server Response: %s", lineb)
+			break
+		}
+
+		rs.Filename = string(mb[1])
+		rs.Signature = string(mb[2])
+		rs.Status = string(mb[3])
+		rs.Raw = string(mb[0])
+
+		if !seen {
+			r[0] = rs
+			seen = true
+		} else {
+			r = append(r, rs)
+		}
+	}
 
 	return
 }
