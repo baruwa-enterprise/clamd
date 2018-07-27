@@ -13,6 +13,9 @@ go:
 
 install:
   - make get-deps
+  - sudo apt-get install clamav-daemon clamav-freshclam clamav-unofficial-sigs
+  - sudo freshclam --verbose
+  - sudo service clamav-daemon start
 
 script:
   - go test ./
