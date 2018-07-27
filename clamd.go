@@ -19,6 +19,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/baruwa-enterprise/clamd/protocol"
@@ -152,8 +153,9 @@ func (c *Client) InStream(p string) (r []Response, err error) {
 }
 
 // Fildes scan a FD
-func (c *Client) Fildes() {
-
+func (c *Client) Fildes(p string) (r []Response, err error) {
+	r, err = c.fileCmd(protocol.Fildes, p)
+	return
 }
 
 // Stats returns server stats
@@ -273,6 +275,10 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []Response, err erro
 		return
 	}
 
+	// if sock, ok := conn.(*net.UnixConn); ok {
+	// 	fmt.Println("Usingin unix socket")
+	// }
+
 	if c.cmdTimeout > 0 {
 		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 	}
@@ -319,6 +325,33 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []Response, err erro
 		if err != nil {
 			return
 		}
+	} else if cmd == protocol.Fildes {
+		var f *os.File
+		var vf *os.File
+
+		fmt.Fprintf(tc.W, "n%s\n", cmd)
+		tc.W.Flush()
+
+		f, err = os.Open(p)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+
+		s := conn.(*net.UnixConn)
+		vf, err = s.File()
+		if err != nil {
+			return
+		}
+		sock := int(vf.Fd())
+		defer vf.Close()
+
+		fds := []int{int(f.Fd())}
+		rights := syscall.UnixRights(fds...)
+		err = syscall.Sendmsg(sock, nil, rights, nil, 0)
+		if err != nil {
+			return
+		}
 	} else {
 		fmt.Fprintf(tc.W, "n%s %s\n", cmd, p)
 	}
@@ -341,7 +374,11 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []Response, err erro
 
 		mb := responseRe.FindSubmatch(bytes.TrimRight(lineb, "\n"))
 		if mb == nil {
-			err = fmt.Errorf("Invalid Server Response: %s", lineb)
+			if bytes.HasSuffix(lineb, []byte("ERROR\n")) {
+				err = fmt.Errorf("%s", bytes.TrimRight(lineb, " ERROR\n"))
+			} else {
+				err = fmt.Errorf("Invalid Server Response: %s", lineb)
+			}
 			break
 		}
 
