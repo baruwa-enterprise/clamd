@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/baruwa-enterprise/clamd"
@@ -55,145 +56,183 @@ func usage() {
 	flag.PrintDefaults()
 }
 
+func ping(n, a string, w *sync.WaitGroup) {
+	defer func() {
+		w.Done()
+	}()
+
+	c, e := clamd.NewClient(n, a)
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	c.SetConnTimeout(5 * time.Second)
+	r, e := c.Ping()
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	fmt.Println("PING", r)
+}
+
+func stats(n, a string, w *sync.WaitGroup) {
+	defer func() {
+		w.Done()
+	}()
+
+	c, e := clamd.NewClient(n, a)
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	c.SetConnTimeout(5 * time.Second)
+	s, e := c.Stats()
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	fmt.Println("STATS", s)
+}
+
+func version(n, a string, w *sync.WaitGroup) {
+	defer func() {
+		w.Done()
+	}()
+
+	c, e := clamd.NewClient(n, a)
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	c.SetConnTimeout(5 * time.Second)
+	s, e := c.Version()
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	fmt.Println("VERSION", s)
+}
+
+func versionCmds(n, a string, w *sync.WaitGroup) {
+	defer func() {
+		w.Done()
+	}()
+
+	c, e := clamd.NewClient(n, a)
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	c.SetConnTimeout(5 * time.Second)
+	s, e := c.VersionCmds()
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	fmt.Println("VERSIONCOMMANDS", s)
+}
+
+func instream(n, a string, w *sync.WaitGroup) {
+	defer func() {
+		w.Done()
+	}()
+
+	c, e := clamd.NewClient(n, a)
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	c.SetConnTimeout(5 * time.Second)
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		gopath = build.Default.GOPATH
+	}
+	fn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.txt")
+	s, e := c.InStream(fn)
+	if e != nil {
+		log.Println("ERROR:", e)
+		return
+	}
+	fmt.Println("INSTREAM", "fn=>", s[0].Filename, "sig=>", s[0].Signature, "status=>", s[0].Status)
+	fmt.Println("RAW=>", s[0].Raw)
+}
+
+func fildes(n, a string, w *sync.WaitGroup) {
+	defer func() {
+		w.Done()
+	}()
+
+	c, e := clamd.NewClient(n, a)
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	c.SetConnTimeout(5 * time.Second)
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		gopath = build.Default.GOPATH
+	}
+	fn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.txt")
+	s, e := c.Fildes(fn)
+	if e != nil {
+		log.Println("ERROR:", e)
+		return
+	}
+	fmt.Println("FILDES", "fn=>", s[0].Filename, "sig=>", s[0].Signature, "status=>", s[0].Status)
+	fmt.Println("RAW=>", s[0].Raw)
+}
+
+func contscan(n, a string, w *sync.WaitGroup) {
+	defer func() {
+		w.Done()
+	}()
+
+	c, e := clamd.NewClient(n, a)
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	c.SetConnTimeout(5 * time.Second)
+	s, e := c.ContScan("/var/spool/testfiles/")
+	if e != nil {
+		log.Println("ERROR:", e)
+		return
+	}
+	for _, rt := range s {
+		fmt.Println("CONTSCAN", "fn=>", rt.Filename, "sig=>", rt.Signature, "status=>", rt.Status)
+		fmt.Println("RAW=>", rt.Raw)
+	}
+}
+
 func main() {
 	flag.Usage = usage
 	flag.ErrHelp = errors.New("")
 	flag.CommandLine.SortFlags = false
 	flag.Parse()
 	network, address := parseAddr(cfg.Address, cfg.Port)
-	ch := make(chan bool)
-	go func() {
-		defer func() {
-			ch <- true
-		}()
-
-		c, e := clamd.NewClient(network, address)
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		c.SetConnTimeout(5 * time.Second)
-		r, e := c.Ping()
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		fmt.Println("PING", r)
-	}()
-	go func() {
-		defer func() {
-			ch <- true
-		}()
-
-		c, e := clamd.NewClient(network, address)
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		c.SetConnTimeout(5 * time.Second)
-		s, e := c.Stats()
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		fmt.Println("STATS", s)
-	}()
-	go func() {
-		defer func() {
-			ch <- true
-		}()
-
-		c, e := clamd.NewClient(network, address)
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		c.SetConnTimeout(5 * time.Second)
-		s, e := c.Version()
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		fmt.Println("VERSION", s)
-	}()
-	go func() {
-		defer func() {
-			ch <- true
-		}()
-
-		c, e := clamd.NewClient(network, address)
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		c.SetConnTimeout(5 * time.Second)
-		s, e := c.VersionCmds()
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		fmt.Println("VERSIONCOMMANDS", s)
-	}()
-	<-ch
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go ping(network, address, &wg)
+	wg.Add(1)
+	go stats(network, address, &wg)
+	wg.Add(1)
+	go version(network, address, &wg)
+	wg.Add(1)
+	go versionCmds(network, address, &wg)
 	if network == "unix" {
-		c, e := clamd.NewClient(network, address)
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		c.SetConnTimeout(5 * time.Second)
-		gopath := os.Getenv("GOPATH")
-		if gopath == "" {
-			gopath = build.Default.GOPATH
-		}
-		fn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.txt")
-		s, e := c.InStream(fn)
-		if e != nil {
-			log.Println("ERROR:", e)
-			return
-		}
-		fmt.Println("INSTREAM", "fn=>", s[0].Filename, "sig=>", s[0].Signature, "status=>", s[0].Status)
-		fmt.Println("RAW=>", s[0].Raw)
+		wg.Add(1)
+		go instream(network, address, &wg)
+		wg.Add(1)
+		go fildes(network, address, &wg)
+	} else {
+		wg.Add(1)
+		go contscan(network, address, &wg)
 	}
-	// fildes
-	if network == "unix" {
-		c, e := clamd.NewClient(network, address)
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		c.SetConnTimeout(5 * time.Second)
-		gopath := os.Getenv("GOPATH")
-		if gopath == "" {
-			gopath = build.Default.GOPATH
-		}
-		fn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.txt")
-		s, e := c.Fildes(fn)
-		if e != nil {
-			log.Println("ERROR:", e)
-			return
-		}
-		fmt.Println("FILDES", "fn=>", s[0].Filename, "sig=>", s[0].Signature, "status=>", s[0].Status)
-		fmt.Println("RAW=>", s[0].Raw)
-	}
-	// Contscan
+	wg.Wait()
+
+	// Run in main goroutine
 	if network != "unix" {
 		c, e := clamd.NewClient(network, address)
-		if e != nil {
-			log.Println(e)
-			return
-		}
-		c.SetConnTimeout(5 * time.Second)
-		s, e := c.ContScan("/var/spool/testfiles/")
-		if e != nil {
-			log.Println("ERROR:", e)
-			return
-		}
-		for _, rt := range s {
-			fmt.Println("CONTSCAN", "fn=>", rt.Filename, "sig=>", rt.Signature, "status=>", rt.Status)
-			fmt.Println("RAW=>", rt.Raw)
-		}
-		c, e = clamd.NewClient(network, address)
 		if e != nil {
 			log.Println(e)
 			return
