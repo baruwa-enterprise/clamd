@@ -275,10 +275,6 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []Response, err erro
 		return
 	}
 
-	// if sock, ok := conn.(*net.UnixConn); ok {
-	// 	fmt.Println("Usingin unix socket")
-	// }
-
 	if c.cmdTimeout > 0 {
 		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 	}
