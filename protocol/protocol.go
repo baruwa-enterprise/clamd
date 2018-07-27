@@ -128,7 +128,7 @@ func (c Command) String() (s string) {
 // file or directory as a param
 func (c Command) RequiresParam() (b bool) {
 	switch c {
-	case Scan, ContScan, MultiScan:
+	case Scan, ContScan, MultiScan, Instream, Fildes:
 		b = true
 	}
 	return
