@@ -285,6 +285,11 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err err
 		}
 	}
 
+	if cmd == protocol.Fildes && c.network != "unix" && c.network != "unixpacket" {
+		err = fmt.Errorf("Fildes can not be called on a non unix connection")
+		return
+	}
+
 	conn, err = c.dial()
 	if err != nil {
 		return

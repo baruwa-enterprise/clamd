@@ -88,6 +88,15 @@ func TestBasics(t *testing.T) {
 		if c.address != address {
 			t.Errorf("Got %q want %q", c.address, address)
 		}
+		// Test Fildes
+		if _, e := c.Fildes("/tmp"); e == nil {
+			t.Errorf("An error should be returned")
+		} else {
+			expected := "Fildes can not be called on a non unix connection"
+			if e.Error() != expected {
+				t.Errorf("Got %q want %q", e, expected)
+			}
+		}
 	}
 }
 
