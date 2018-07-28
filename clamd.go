@@ -428,7 +428,7 @@ func NewClient(network, address string) (c *Client, err error) {
 		}
 	}
 
-	if network == "udp" || network == "udp4" || network == "udp6" {
+	if network != "unix" && network != "unixpacket" && network != "tcp" && network != "tcp4" && network != "tcp6" {
 		err = fmt.Errorf("Protocol: %s is not supported", network)
 		return
 	}
