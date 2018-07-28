@@ -204,6 +204,28 @@ func contscan(n, a string, w *sync.WaitGroup) {
 	}
 }
 
+func scan(n, a string, w *sync.WaitGroup) {
+	defer func() {
+		w.Done()
+	}()
+
+	c, e := clamd.NewClient(n, a)
+	if e != nil {
+		log.Println(e)
+		return
+	}
+	c.SetConnTimeout(5 * time.Second)
+	s, e := c.Scan("/var/spool/testfiles/install.log")
+	if e != nil {
+		log.Println("ERROR:", e)
+		return
+	}
+	for _, rt := range s {
+		fmt.Println("SCAN", "fn=>", rt.Filename, "sig=>", rt.Signature, "status=>", rt.Status)
+		fmt.Println("RAW=>", rt.Raw)
+	}
+}
+
 func main() {
 	flag.Usage = usage
 	flag.ErrHelp = errors.New("")
@@ -227,6 +249,8 @@ func main() {
 	} else {
 		wg.Add(1)
 		go contscan(network, address, &wg)
+		wg.Add(1)
+		go scan(network, address, &wg)
 	}
 	wg.Wait()
 
