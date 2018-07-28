@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	responseRe = regexp.MustCompile(`^(?P<filename>[^:]+):\s+(?P<signature>[^:]+ )?(?P<status>(FOUND|OK|ERROR))$`)
+	responseRe = regexp.MustCompile(`^(?P<filename>[^:]+):\s+(?:(?P<signature>[^:]+)\s+)?(?P<status>(FOUND|OK|ERROR))$`)
 )
 
 // Response is the response from the server
@@ -97,7 +97,14 @@ func (c *Client) Ping() (b bool, err error) {
 
 // Version returns the server version
 func (c *Client) Version() (v string, err error) {
-	v, err = c.basicCmd(protocol.Version)
+	if v, err = c.basicCmd(protocol.Version); err != nil {
+		return
+	}
+
+	if v == "" && err == nil {
+		err = fmt.Errorf("Version not returned")
+		return
+	}
 
 	if err = checkError(v); err != nil {
 		return
@@ -129,38 +136,45 @@ func (c *Client) Shutdown() (err error) {
 }
 
 // Scan a file or directory
-func (c *Client) Scan(p string) (r []Response, err error) {
+func (c *Client) Scan(p string) (r []*Response, err error) {
 	r, err = c.fileCmd(protocol.Scan, p)
 	return
 }
 
 // ContScan a file or directory
-func (c *Client) ContScan(p string) (r []Response, err error) {
+func (c *Client) ContScan(p string) (r []*Response, err error) {
 	r, err = c.fileCmd(protocol.ContScan, p)
 	return
 }
 
 // MultiScan a file or directory
-func (c *Client) MultiScan(p string) (r []Response, err error) {
+func (c *Client) MultiScan(p string) (r []*Response, err error) {
 	r, err = c.fileCmd(protocol.MultiScan, p)
 	return
 }
 
 // InStream scan a stream
-func (c *Client) InStream(p string) (r []Response, err error) {
+func (c *Client) InStream(p string) (r []*Response, err error) {
 	r, err = c.fileCmd(protocol.Instream, p)
 	return
 }
 
 // Fildes scan a FD
-func (c *Client) Fildes(p string) (r []Response, err error) {
+func (c *Client) Fildes(p string) (r []*Response, err error) {
 	r, err = c.fileCmd(protocol.Fildes, p)
 	return
 }
 
 // Stats returns server stats
 func (c *Client) Stats() (s string, err error) {
-	s, err = c.basicCmd(protocol.Stats)
+	if s, err = c.basicCmd(protocol.Stats); err != nil {
+		return
+	}
+
+	if s == "" && err == nil {
+		err = fmt.Errorf("Stats not returned")
+		return
+	}
 
 	if err = checkError(s); err != nil {
 		return
@@ -182,7 +196,10 @@ func (c *Client) End() {
 // VersionCmds returns the supported cmds
 func (c *Client) VersionCmds() (r []string, err error) {
 	var s string
-	s, err = c.basicCmd(protocol.VersionCmds)
+	if s, err = c.basicCmd(protocol.VersionCmds); err != nil {
+		return
+	}
+
 	p := strings.Split(s, "COMMANDS: ")
 	if len(p) != 2 {
 		err = fmt.Errorf("Invalid Server Response: %s", s)
@@ -258,7 +275,7 @@ func (c *Client) basicCmd(cmd protocol.Command) (r string, err error) {
 	return
 }
 
-func (c *Client) fileCmd(cmd protocol.Command, p string) (r []Response, err error) {
+func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err error) {
 	var seen bool
 	var lineb []byte
 	var conn net.Conn
@@ -357,7 +374,7 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []Response, err erro
 	tc.StartResponse(id)
 	defer tc.EndResponse(id)
 
-	r = make([]Response, 1)
+	r = make([]*Response, 1)
 	for {
 		lineb, err = tc.R.ReadBytes('\n')
 		rs := Response{}
@@ -384,10 +401,10 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []Response, err erro
 		rs.Raw = string(mb[0])
 
 		if !seen {
-			r[0] = rs
+			r[0] = &rs
 			seen = true
 		} else {
-			r = append(r, rs)
+			r = append(r, &rs)
 		}
 	}
 
@@ -406,6 +423,11 @@ func NewClient(network, address string) (c *Client, err error) {
 			err = fmt.Errorf("The unix socket: %s does not exist", address)
 			return
 		}
+	}
+
+	if network == "udp" || network == "udp4" || network == "udp6" {
+		err = fmt.Errorf("Protocol: %s is not supported", network)
+		return
 	}
 
 	c = &Client{
