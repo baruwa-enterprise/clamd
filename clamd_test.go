@@ -280,7 +280,7 @@ func TestMethods(t *testing.T) {
 		}
 	}
 	if result, e = c.Scan(fn); e != nil {
-		t.Errorf("An error should not be returned")
+		t.Errorf("Expected nil got %q", e)
 	} else {
 		l := len(result)
 		if l == 0 {
@@ -298,7 +298,7 @@ func TestMethods(t *testing.T) {
 		}
 	}
 	if result, e = c.ContScan(path.Dir(fn)); e != nil {
-		t.Errorf("An error should not be returned")
+		t.Errorf("Expected nil got %q", e)
 	} else {
 		l := len(result)
 		if l == 0 {
@@ -320,7 +320,7 @@ func TestMethods(t *testing.T) {
 		}
 	}
 	if result, e = c.MultiScan(fn); e != nil {
-		t.Errorf("An error should not be returned")
+		t.Errorf("Expected nil got %q", e)
 	} else {
 		l := len(result)
 		if l == 0 {
