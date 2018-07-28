@@ -184,14 +184,12 @@ func (c *Client) Stats() (s string, err error) {
 }
 
 // IDSession starts a session
-func (c *Client) IDSession() {
-
-}
+// func (c *Client) IDSession() {
+// }
 
 // End closes a session
-func (c *Client) End() {
-
-}
+// func (c *Client) End() {
+// }
 
 // VersionCmds returns the supported cmds
 func (c *Client) VersionCmds() (r []string, err error) {
