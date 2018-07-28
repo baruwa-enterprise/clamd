@@ -12,6 +12,8 @@ package clamd
 import (
 	"fmt"
 	"go/build"
+	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"path"
@@ -225,7 +227,7 @@ func TestMethods(t *testing.T) {
 	var c *Client
 	var result []*Response
 	var vcmds []string
-	var network, address, rs string
+	var network, address, rs, dir string
 
 	address = os.Getenv("CLAMD_ADDRESS")
 	if address == "" {
@@ -244,6 +246,21 @@ func TestMethods(t *testing.T) {
 		gopath = build.Default.GOPATH
 	}
 	fn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.txt")
+	zfn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.tar.bz2")
+	dir, e = ioutil.TempDir("", "")
+	if e != nil {
+		t.Errorf("Temp directory creation failed")
+	}
+	defer os.RemoveAll(dir)
+	tfn := path.Join(dir, "eicar.txt")
+	tzfn := path.Join(dir, "eicar.tar.bz2")
+	if e = copyFile(fn, tfn, 0644); e != nil {
+		t.Errorf("Copy %s => %s failed: %t", fn, tfn, e)
+	}
+	if e = copyFile(zfn, tzfn, 0644); e != nil {
+		t.Errorf("Copy %s => %s failed: %t", fn, tzfn, e)
+	}
+
 	if c, e = NewClient(network, address); e != nil {
 		t.Errorf("An error should not be returned")
 	}
@@ -279,7 +296,7 @@ func TestMethods(t *testing.T) {
 			}
 		}
 	}
-	if result, e = c.Scan(fn); e != nil {
+	if result, e = c.Scan(tfn); e != nil {
 		t.Errorf("Expected nil got %q", e)
 	} else {
 		l := len(result)
@@ -289,15 +306,15 @@ func TestMethods(t *testing.T) {
 			t.Errorf("Expected a slice of Response 1 object:, got %d", l)
 		} else {
 			mb := result[0]
-			if mb.Filename != fn {
-				t.Errorf("Expected %q, got %q", fn, mb.Filename)
+			if mb.Filename != tfn {
+				t.Errorf("Expected %q, got %q", tfn, mb.Filename)
 			}
 			if mb.Signature != "Eicar-Test-Signature" {
 				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
 			}
 		}
 	}
-	if result, e = c.ContScan(path.Dir(fn)); e != nil {
+	if result, e = c.ContScan(path.Dir(tfn)); e != nil {
 		t.Errorf("Expected nil got %q", e)
 	} else {
 		l := len(result)
@@ -307,8 +324,8 @@ func TestMethods(t *testing.T) {
 			t.Errorf("Expected a slice of Response 2 objects:, got %d", l)
 		} else {
 			mb := result[0]
-			if mb.Filename != fn {
-				t.Errorf("Expected %q, got %q", fn, mb.Filename)
+			if mb.Filename != tfn {
+				t.Errorf("Expected %q, got %q", tfn, mb.Filename)
 			}
 			if mb.Signature != "Eicar-Test-Signature" {
 				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
@@ -319,7 +336,7 @@ func TestMethods(t *testing.T) {
 			}
 		}
 	}
-	if result, e = c.MultiScan(fn); e != nil {
+	if result, e = c.MultiScan(tfn); e != nil {
 		t.Errorf("Expected nil got %q", e)
 	} else {
 		l := len(result)
@@ -329,8 +346,8 @@ func TestMethods(t *testing.T) {
 			t.Errorf("Expected a slice of Response 1 object:, got %q", l)
 		} else {
 			mb := result[0]
-			if mb.Filename != fn {
-				t.Errorf("Expected %q, got %q", fn, mb.Filename)
+			if mb.Filename != tfn {
+				t.Errorf("Expected %q, got %q", tfn, mb.Filename)
 			}
 			if mb.Signature != "Eicar-Test-Signature" {
 				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
@@ -382,4 +399,25 @@ func TestMethods(t *testing.T) {
 			t.Errorf("Expected true, got %t", b)
 		}
 	}
+}
+
+func copyFile(src, dst string, mode os.FileMode) error {
+	var err error
+	var srcfd *os.File
+	var dstfd *os.File
+
+	if srcfd, err = os.Open(src); err != nil {
+		return err
+	}
+	defer srcfd.Close()
+
+	if dstfd, err = os.Create(dst); err != nil {
+		return err
+	}
+	defer dstfd.Close()
+
+	if _, err = io.Copy(dstfd, srcfd); err != nil {
+		return err
+	}
+	return os.Chmod(dst, mode)
 }
