@@ -12,6 +12,7 @@ package clamd
 import (
 	"fmt"
 	"go/build"
+	"net"
 	"os"
 	"path"
 	"strings"
@@ -138,71 +139,70 @@ func TestMethodsErrors(t *testing.T) {
 	}
 	c.SetConnTimeout(500 * time.Microsecond)
 	// c.SetConnRetries(1)
-	expected := "dial tcp 127.1.1.1:3310: i/o timeout"
 	if _, e = c.Ping(); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
+		if _, ok := e.(*net.OpError); !ok {
+			t.Errorf("Expected *net.OpError want %q", e)
 		}
 	}
 	if _, e = c.Version(); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
+		if _, ok := e.(*net.OpError); !ok {
+			t.Errorf("Expected *net.OpError want %q", e)
 		}
 	}
 	if _, e = c.Reload(); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
+		if _, ok := e.(*net.OpError); !ok {
+			t.Errorf("Expected *net.OpError want %q", e)
 		}
 	}
 	if e = c.Shutdown(); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
+		if _, ok := e.(*net.OpError); !ok {
+			t.Errorf("Expected *net.OpError want %q", e)
 		}
 	}
 	if _, e = c.Stats(); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
+		if _, ok := e.(*net.OpError); !ok {
+			t.Errorf("Expected *net.OpError want %q", e)
 		}
 	}
 	if _, e = c.VersionCmds(); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
+		if _, ok := e.(*net.OpError); !ok {
+			t.Errorf("Expected *net.OpError want %q", e)
 		}
 	}
 	if _, e = c.Scan("/tmp/bxx.syx"); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
+		if _, ok := e.(*net.OpError); !ok {
+			t.Errorf("Expected *net.OpError want %q", e)
 		}
 	}
 	if _, e = c.ContScan("/tmp/bxx.syx"); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
+		if _, ok := e.(*net.OpError); !ok {
+			t.Errorf("Expected *net.OpError want %q", e)
 		}
 	}
 	if _, e = c.MultiScan("/tmp/bxx.syx"); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
+		if _, ok := e.(*net.OpError); !ok {
+			t.Errorf("Expected *net.OpError want %q", e)
 		}
 	}
-	expected = "stat /tmp/bxx.syx: no such file or directory"
+	expected := "stat /tmp/bxx.syx: no such file or directory"
 	if _, e = c.InStream("/tmp/bxx.syx"); e == nil {
 		t.Errorf("An error should be returned")
 	} else {
