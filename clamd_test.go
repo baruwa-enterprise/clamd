@@ -252,6 +252,9 @@ func TestMethods(t *testing.T) {
 		t.Errorf("Temp directory creation failed")
 	}
 	defer os.RemoveAll(dir)
+	if e = os.Chmod(dir, 0755); e != nil {
+		t.Errorf("Temp directory chmod failed")
+	}
 	tfn := path.Join(dir, "eicar.txt")
 	tzfn := path.Join(dir, "eicar.tar.bz2")
 	if e = copyFile(fn, tfn, 0644); e != nil {
