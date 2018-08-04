@@ -45,7 +45,7 @@ func TestCheckErrors(t *testing.T) {
 }
 
 func TestBasics(t *testing.T) {
-	// Test Non existant socket
+	// Test Non existent socket
 	_, e := NewClient("unix", "/tmp/.dumx.sock")
 	if e == nil {
 		t.Errorf("An error should be returned as sock does not exist")
