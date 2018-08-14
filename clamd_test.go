@@ -234,6 +234,7 @@ func TestMethods(t *testing.T) {
 	var e error
 	var b bool
 	var c *Client
+	var f *os.File
 	var result []*Response
 	var vcmds []string
 	var network, address, rs, dir string
@@ -325,6 +326,29 @@ func TestMethods(t *testing.T) {
 				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
 			}
 		}
+	}
+	if f, e = os.Open(tfn); e == nil {
+		defer f.Close()
+		if result, e = c.ScanReader(f); e != nil {
+			t.Errorf("Expected nil got %q", e)
+		} else {
+			l := len(result)
+			if l == 0 {
+				t.Errorf("Expected a slice of Response objects:, got %q", result)
+			} else if l > 1 {
+				t.Errorf("Expected a slice of Response 1 object:, got %d", l)
+			} else {
+				mb := result[0]
+				if mb.Filename != "stream" {
+					t.Errorf("Expected %q, got %q", "stream", mb.Filename)
+				}
+				if mb.Signature != "Eicar-Test-Signature" {
+					t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+				}
+			}
+		}
+	} else {
+		t.Errorf("Expected nil got %q", e)
 	}
 	if result, e = c.ContScan(path.Dir(tfn)); e != nil {
 		t.Errorf("Expected nil got %q", e)

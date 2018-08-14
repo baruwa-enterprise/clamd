@@ -141,6 +141,12 @@ func (c *Client) Scan(p string) (r []*Response, err error) {
 	return
 }
 
+// ScanReader scans an io.reader
+func (c *Client) ScanReader(i io.Reader) (r []*Response, err error) {
+	r, err = c.readerCmd(i)
+	return
+}
+
 // ContScan a file or directory
 func (c *Client) ContScan(p string) (r []*Response, err error) {
 	r, err = c.fileCmd(protocol.ContScan, p)
@@ -274,8 +280,6 @@ func (c *Client) basicCmd(cmd protocol.Command) (r string, err error) {
 }
 
 func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err error) {
-	var seen bool
-	var lineb []byte
 	var conn net.Conn
 	var tc *textproto.Conn
 
@@ -305,39 +309,15 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err err
 	id := tc.Next()
 	tc.StartRequest(id)
 	if cmd == protocol.Instream {
-		var n int
 		var f *os.File
+
 		f, err = os.Open(p)
 		if err != nil {
 			return
 		}
 		defer f.Close()
-		fmt.Fprintf(tc.W, "n%s\n", cmd)
-		b := make([]byte, 4)
-		for {
-			buf := make([]byte, ChunkSize)
-			n, err = f.Read(buf)
-			if err != nil {
-				if err == io.EOF {
-					err = nil
-					break
-				}
-				return
-			}
-			if n > 0 {
-				binary.BigEndian.PutUint32(b, uint32(n))
-				_, err = tc.W.Write(b)
-				if err != nil {
-					return
-				}
-				_, err = tc.W.Write(buf[0:n])
-				if err != nil {
-					return
-				}
-				tc.W.Flush()
-			}
-		}
-		_, err = tc.W.Write([]byte{0, 0, 0, 0})
+
+		err = c.streamCmd(tc, cmd, f)
 		if err != nil {
 			return
 		}
@@ -376,6 +356,86 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err err
 
 	tc.StartResponse(id)
 	defer tc.EndResponse(id)
+
+	r, err = c.processResponse(tc)
+
+	return
+}
+
+func (c *Client) readerCmd(i io.Reader) (r []*Response, err error) {
+	var conn net.Conn
+	var tc *textproto.Conn
+
+	conn, err = c.dial()
+	if err != nil {
+		return
+	}
+
+	if c.cmdTimeout > 0 {
+		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
+	}
+
+	tc = textproto.NewConn(conn)
+	defer tc.Close()
+
+	id := tc.Next()
+	tc.StartRequest(id)
+
+	err = c.streamCmd(tc, protocol.Instream, i)
+	if err != nil {
+		return
+	}
+
+	tc.EndRequest(id)
+
+	tc.StartResponse(id)
+	defer tc.EndResponse(id)
+
+	r, err = c.processResponse(tc)
+
+	return
+}
+
+func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader) (err error) {
+	var n int
+
+	fmt.Fprintf(tc.W, "n%s\n", cmd)
+	b := make([]byte, 4)
+	for {
+		buf := make([]byte, ChunkSize)
+		n, err = f.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+				break
+			}
+			return
+		}
+		if n > 0 {
+			binary.BigEndian.PutUint32(b, uint32(n))
+			_, err = tc.W.Write(b)
+			if err != nil {
+				return
+			}
+			_, err = tc.W.Write(buf[0:n])
+			if err != nil {
+				return
+			}
+			tc.W.Flush()
+		}
+	}
+	_, err = tc.W.Write([]byte{0, 0, 0, 0})
+	if err != nil {
+		return
+	}
+	tc.W.Flush()
+
+	return
+}
+
+func (c *Client) processResponse(tc *textproto.Conn) (r []*Response, err error) {
+	var seen bool
+	var lineb []byte
 
 	r = make([]*Response, 1)
 	for {
