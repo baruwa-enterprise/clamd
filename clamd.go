@@ -280,6 +280,7 @@ func (c *Client) basicCmd(cmd protocol.Command) (r string, err error) {
 }
 
 func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err error) {
+	var id uint
 	var conn net.Conn
 	var tc *textproto.Conn
 
@@ -306,46 +307,16 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err err
 	tc = textproto.NewConn(conn)
 	defer tc.Close()
 
-	id := tc.Next()
+	id = tc.Next()
 	tc.StartRequest(id)
 	if cmd == protocol.Instream {
-		var f *os.File
-
-		f, err = os.Open(p)
-		if err != nil {
-			return
-		}
-		defer f.Close()
-
-		err = c.streamCmd(tc, cmd, f)
-		if err != nil {
+		if err = c.instreamScan(tc, p); err != nil {
+			tc.EndRequest(id)
 			return
 		}
 	} else if cmd == protocol.Fildes {
-		var f *os.File
-		var vf *os.File
-
-		fmt.Fprintf(tc.W, "n%s\n", cmd)
-		tc.W.Flush()
-
-		f, err = os.Open(p)
-		if err != nil {
-			return
-		}
-		defer f.Close()
-
-		s := conn.(*net.UnixConn)
-		vf, err = s.File()
-		if err != nil {
-			return
-		}
-		sock := int(vf.Fd())
-		defer vf.Close()
-
-		fds := []int{int(f.Fd())}
-		rights := syscall.UnixRights(fds...)
-		err = syscall.Sendmsg(sock, nil, rights, nil, 0)
-		if err != nil {
+		if err = c.fildesScan(tc, conn, p); err != nil {
+			tc.EndRequest(id)
 			return
 		}
 	} else {
@@ -383,6 +354,7 @@ func (c *Client) readerCmd(i io.Reader) (r []*Response, err error) {
 
 	err = c.streamCmd(tc, protocol.Instream, i)
 	if err != nil {
+		tc.EndRequest(id)
 		return
 	}
 
@@ -471,6 +443,52 @@ func (c *Client) processResponse(tc *textproto.Conn) (r []*Response, err error) 
 		}
 	}
 
+	return
+}
+
+func (c *Client) instreamScan(tc *textproto.Conn, p string) (err error) {
+	var f *os.File
+
+	f, err = os.Open(p)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	err = c.streamCmd(tc, protocol.Instream, f)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (c *Client) fildesScan(tc *textproto.Conn, conn net.Conn, p string) (err error) {
+	var f *os.File
+	var vf *os.File
+
+	fmt.Fprintf(tc.W, "n%s\n", protocol.Fildes)
+	tc.W.Flush()
+
+	f, err = os.Open(p)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	s := conn.(*net.UnixConn)
+	vf, err = s.File()
+	if err != nil {
+		return
+	}
+	sock := int(vf.Fd())
+	defer vf.Close()
+
+	fds := []int{int(f.Fd())}
+	rights := syscall.UnixRights(fds...)
+	err = syscall.Sendmsg(sock, nil, rights, nil, 0)
+	if err != nil {
+		return
+	}
 	return
 }
 
