@@ -26,8 +26,9 @@ import (
 )
 
 const (
-	defaultTimeout = 15 * time.Second
-	defaultSleep   = 1 * time.Second
+	defaultTimeout    = 15 * time.Second
+	defaultSleep      = 1 * time.Second
+	defaultCmdTimeout = 1 * time.Minute
 	// ChunkSize the size for chunking INSTREAM files
 	ChunkSize = 1024
 )
@@ -215,10 +216,8 @@ func (c *Client) VersionCmds() (r []string, err error) {
 }
 
 func (c *Client) dial() (conn net.Conn, err error) {
-	d := &net.Dialer{}
-
-	if c.connTimeout > 0 {
-		d.Timeout = c.connTimeout
+	d := &net.Dialer{
+		Timeout: c.connTimeout,
 	}
 
 	for i := 0; i <= c.connRetries; i++ {
@@ -243,15 +242,12 @@ func (c *Client) basicCmd(cmd protocol.Command) (r string, err error) {
 		return
 	}
 
-	if c.cmdTimeout > 0 {
-		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
-	}
-
 	tc = textproto.NewConn(conn)
 	defer tc.Close()
 
 	id := tc.Next()
 	tc.StartRequest(id)
+	conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 	fmt.Fprintf(tc.W, "n%s\n", cmd)
 	tc.W.Flush()
 	tc.EndRequest(id)
@@ -264,6 +260,7 @@ func (c *Client) basicCmd(cmd protocol.Command) (r string, err error) {
 	}
 
 	for {
+		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 		l, err = tc.R.ReadBytes('\n')
 		if err != nil {
 			if err == io.EOF {
@@ -300,17 +297,15 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err err
 		return
 	}
 
-	if c.cmdTimeout > 0 {
-		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
-	}
-
 	tc = textproto.NewConn(conn)
 	defer tc.Close()
 
 	id = tc.Next()
 	tc.StartRequest(id)
+
+	conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 	if cmd == protocol.Instream {
-		if err = c.instreamScan(tc, p); err != nil {
+		if err = c.instreamScan(tc, conn, p); err != nil {
 			tc.EndRequest(id)
 			return
 		}
@@ -328,7 +323,7 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err err
 	tc.StartResponse(id)
 	defer tc.EndResponse(id)
 
-	r, err = c.processResponse(tc)
+	r, err = c.processResponse(tc, conn)
 
 	return
 }
@@ -342,17 +337,13 @@ func (c *Client) readerCmd(i io.Reader) (r []*Response, err error) {
 		return
 	}
 
-	if c.cmdTimeout > 0 {
-		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
-	}
-
 	tc = textproto.NewConn(conn)
 	defer tc.Close()
 
 	id := tc.Next()
 	tc.StartRequest(id)
 
-	err = c.streamCmd(tc, protocol.Instream, i)
+	err = c.streamCmd(tc, protocol.Instream, i, conn)
 	if err != nil {
 		tc.EndRequest(id)
 		return
@@ -363,12 +354,12 @@ func (c *Client) readerCmd(i io.Reader) (r []*Response, err error) {
 	tc.StartResponse(id)
 	defer tc.EndResponse(id)
 
-	r, err = c.processResponse(tc)
+	r, err = c.processResponse(tc, conn)
 
 	return
 }
 
-func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader) (err error) {
+func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader, conn net.Conn) (err error) {
 	var n int
 
 	fmt.Fprintf(tc.W, "n%s\n", cmd)
@@ -384,6 +375,7 @@ func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader
 			return
 		}
 		if n > 0 {
+			conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 			binary.BigEndian.PutUint32(b, uint32(n))
 			_, err = tc.W.Write(b)
 			if err != nil {
@@ -405,12 +397,13 @@ func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader
 	return
 }
 
-func (c *Client) processResponse(tc *textproto.Conn) (r []*Response, err error) {
+func (c *Client) processResponse(tc *textproto.Conn, conn net.Conn) (r []*Response, err error) {
 	var seen bool
 	var lineb []byte
 
 	r = make([]*Response, 1)
 	for {
+		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 		lineb, err = tc.R.ReadBytes('\n')
 		rs := Response{}
 		if err != nil {
@@ -446,7 +439,7 @@ func (c *Client) processResponse(tc *textproto.Conn) (r []*Response, err error) 
 	return
 }
 
-func (c *Client) instreamScan(tc *textproto.Conn, p string) (err error) {
+func (c *Client) instreamScan(tc *textproto.Conn, conn net.Conn, p string) (err error) {
 	var f *os.File
 
 	f, err = os.Open(p)
@@ -455,7 +448,7 @@ func (c *Client) instreamScan(tc *textproto.Conn, p string) (err error) {
 	}
 	defer f.Close()
 
-	err = c.streamCmd(tc, protocol.Instream, f)
+	err = c.streamCmd(tc, protocol.Instream, f, conn)
 	if err != nil {
 		return
 	}
@@ -516,6 +509,7 @@ func NewClient(network, address string) (c *Client, err error) {
 		address:     address,
 		connTimeout: defaultTimeout,
 		connSleep:   defaultSleep,
+		cmdTimeout:  defaultCmdTimeout,
 	}
 	return
 }
