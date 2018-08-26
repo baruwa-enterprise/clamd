@@ -492,16 +492,16 @@ func NewClient(network, address string) (c *Client, err error) {
 		address = "/var/run/clamav/clamd.sock"
 	}
 
+	if network != "unix" && network != "unixpacket" && network != "tcp" && network != "tcp4" && network != "tcp6" {
+		err = fmt.Errorf("Protocol: %s is not supported", network)
+		return
+	}
+
 	if network == "unix" || network == "unixpacket" {
 		if _, err = os.Stat(address); os.IsNotExist(err) {
 			err = fmt.Errorf("The unix socket: %s does not exist", address)
 			return
 		}
-	}
-
-	if network != "unix" && network != "unixpacket" && network != "tcp" && network != "tcp4" && network != "tcp6" {
-		err = fmt.Errorf("Protocol: %s is not supported", network)
-		return
 	}
 
 	c = &Client{
