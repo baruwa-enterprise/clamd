@@ -398,10 +398,8 @@ func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader
 }
 
 func (c *Client) processResponse(tc *textproto.Conn, conn net.Conn) (r []*Response, err error) {
-	var seen bool
 	var lineb []byte
 
-	r = make([]*Response, 1)
 	for {
 		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 		lineb, err = tc.R.ReadBytes('\n')
@@ -428,12 +426,7 @@ func (c *Client) processResponse(tc *textproto.Conn, conn net.Conn) (r []*Respon
 		rs.Status = string(mb[3])
 		rs.Raw = string(mb[0])
 
-		if !seen {
-			r[0] = &rs
-			seen = true
-		} else {
-			r = append(r, &rs)
-		}
+		r = append(r, &rs)
 	}
 
 	return
