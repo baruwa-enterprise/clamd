@@ -271,8 +271,7 @@ func (c *Client) basicCmd(cmd protocol.Command) (r string, err error) {
 
 	for {
 		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
-		l, err = tc.R.ReadBytes('\n')
-		if err != nil {
+		if l, err = tc.R.ReadBytes('\n'); err != nil {
 			if err == io.EOF {
 				err = nil
 			}
@@ -342,8 +341,7 @@ func (c *Client) readerCmd(i io.Reader) (r []*Response, err error) {
 	var conn net.Conn
 	var tc *textproto.Conn
 
-	conn, err = c.dial()
-	if err != nil {
+	if conn, err = c.dial(); err != nil {
 		return
 	}
 
@@ -353,8 +351,7 @@ func (c *Client) readerCmd(i io.Reader) (r []*Response, err error) {
 	id := tc.Next()
 	tc.StartRequest(id)
 
-	err = c.streamCmd(tc, protocol.Instream, i, conn)
-	if err != nil {
+	if err = c.streamCmd(tc, protocol.Instream, i, conn); err != nil {
 		tc.EndRequest(id)
 		return
 	}
@@ -376,8 +373,7 @@ func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader
 	b := make([]byte, 4)
 	for {
 		buf := make([]byte, ChunkSize)
-		n, err = f.Read(buf)
-		if err != nil {
+		if n, err = f.Read(buf); err != nil {
 			if err == io.EOF {
 				err = nil
 				break
@@ -387,19 +383,16 @@ func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader
 		if n > 0 {
 			conn.SetDeadline(time.Now().Add(c.cmdTimeout))
 			binary.BigEndian.PutUint32(b, uint32(n))
-			_, err = tc.W.Write(b)
-			if err != nil {
+			if _, err = tc.W.Write(b); err != nil {
 				return
 			}
-			_, err = tc.W.Write(buf[0:n])
-			if err != nil {
+			if _, err = tc.W.Write(buf[0:n]); err != nil {
 				return
 			}
 			tc.W.Flush()
 		}
 	}
-	_, err = tc.W.Write([]byte{0, 0, 0, 0})
-	if err != nil {
+	if _, err = tc.W.Write([]byte{0, 0, 0, 0}); err != nil {
 		return
 	}
 	tc.W.Flush()
@@ -412,9 +405,8 @@ func (c *Client) processResponse(tc *textproto.Conn, conn net.Conn) (r []*Respon
 
 	for {
 		conn.SetDeadline(time.Now().Add(c.cmdTimeout))
-		lineb, err = tc.R.ReadBytes('\n')
 		rs := Response{}
-		if err != nil {
+		if lineb, err = tc.R.ReadBytes('\n'); err != nil {
 			if err == io.EOF {
 				err = nil
 			}
@@ -445,16 +437,15 @@ func (c *Client) processResponse(tc *textproto.Conn, conn net.Conn) (r []*Respon
 func (c *Client) instreamScan(tc *textproto.Conn, conn net.Conn, p string) (err error) {
 	var f *os.File
 
-	f, err = os.Open(p)
-	if err != nil {
+	if f, err = os.Open(p); err != nil {
 		return
 	}
 	defer f.Close()
 
-	err = c.streamCmd(tc, protocol.Instream, f, conn)
-	if err != nil {
+	if err = c.streamCmd(tc, protocol.Instream, f, conn); err != nil {
 		return
 	}
+
 	return
 }
 
@@ -465,15 +456,13 @@ func (c *Client) fildesScan(tc *textproto.Conn, conn net.Conn, p string) (err er
 	fmt.Fprintf(tc.W, "n%s\n", protocol.Fildes)
 	tc.W.Flush()
 
-	f, err = os.Open(p)
-	if err != nil {
+	if f, err = os.Open(p); err != nil {
 		return
 	}
 	defer f.Close()
 
 	s := conn.(*net.UnixConn)
-	vf, err = s.File()
-	if err != nil {
+	if vf, err = s.File(); err != nil {
 		return
 	}
 	sock := int(vf.Fd())
@@ -481,10 +470,10 @@ func (c *Client) fildesScan(tc *textproto.Conn, conn net.Conn, p string) (err er
 
 	fds := []int{int(f.Fd())}
 	rights := syscall.UnixRights(fds...)
-	err = syscall.Sendmsg(sock, nil, rights, nil, 0)
-	if err != nil {
+	if err = syscall.Sendmsg(sock, nil, rights, nil, 0); err != nil {
 		return
 	}
+
 	return
 }
 
