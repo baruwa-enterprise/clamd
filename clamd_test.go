@@ -46,58 +46,60 @@ func TestCheckErrors(t *testing.T) {
 
 func TestBasics(t *testing.T) {
 	// Test Non existent socket
-	_, e := NewClient("unix", "/tmp/.dumx.sock")
+	var expected string
+
+	testSock := "/tmp/.dumx.sock"
+	_, e := NewClient("unix", testSock)
 	if e == nil {
-		t.Errorf("An error should be returned as sock does not exist")
-	} else {
-		expected := "The unix socket: /tmp/.dumx.sock does not exist"
-		if e.Error() != expected {
-			t.Errorf("Expected %q want %q", expected, e)
-		}
+		t.Fatalf("An error should be returned as sock does not exist")
 	}
+	expected = fmt.Sprintf(unixSockErr, testSock)
+	if e.Error() != expected {
+		t.Errorf("Expected %q want %q", expected, e)
+	}
+
 	// Test defaults
 	_, e = NewClient("", "")
 	if e == nil {
-		t.Errorf("An error should be returned as sock does not exist")
-	} else {
-		expected := "The unix socket: /var/run/clamav/clamd.sock does not exist"
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", expected, e)
-		}
+		t.Fatalf("An error should be returned as sock does not exist")
 	}
+	expected = fmt.Sprintf(unixSockErr, defaultSock)
+	if e.Error() != expected {
+		t.Errorf("Got %q want %q", expected, e)
+	}
+
 	// Test udp
-	_, e = NewClient("udp", "127.1.1.1:3310")
+	proto := "udp"
+	_, e = NewClient(proto, "127.1.1.1:3310")
 	if e == nil {
-		t.Errorf("Expected an error got nil")
-	} else {
-		expected := "Protocol: udp is not supported"
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", expected, e)
-		}
+		t.Fatalf("Expected an error got nil")
 	}
+	expected = fmt.Sprintf(unsupportedProtoErr, proto)
+	if e.Error() != expected {
+		t.Errorf("Got %q want %q", expected, e)
+	}
+
 	// Test tcp
 	network := "tcp"
 	address := "127.1.1.1:3310"
 	c, e := NewClient(network, address)
 	if e != nil {
-		t.Errorf("An error should not be returned")
-	} else {
-		if c.network != network {
-			t.Errorf("Got %q want %q", c.network, network)
-		}
-		if c.address != address {
-			t.Errorf("Got %q want %q", c.address, address)
-		}
-		// Test Fildes
-		if _, e := c.Fildes("/tmp"); e == nil {
-			t.Errorf("An error should be returned")
-		} else {
-			expected := "Fildes can not be called on a non unix connection"
-			if e.Error() != expected {
-				t.Errorf("Got %q want %q", e, expected)
-			}
-		}
+		t.Fatalf("An error should not be returned")
 	}
+	if c.network != network {
+		t.Errorf("Got %q want %q", c.network, network)
+	}
+	if c.address != address {
+		t.Errorf("Got %q want %q", c.address, address)
+	}
+	// Test Fildes
+	if _, e = c.Fildes("/tmp"); e == nil {
+		t.Fatalf("An error should be returned")
+	}
+	if e.Error() != fldesErr {
+		t.Errorf("Got %q want %q", e, fldesErr)
+	}
+
 }
 
 func TestSettings(t *testing.T) {
@@ -106,7 +108,7 @@ func TestSettings(t *testing.T) {
 	network := "tcp"
 	address := "127.1.1.1:3310"
 	if c, e = NewClient(network, address); e != nil {
-		t.Errorf("An error should not be returned")
+		t.Fatalf("An error should not be returned")
 	}
 	if c.connTimeout != defaultTimeout {
 		t.Errorf("The default conn timeout should be set")
@@ -146,87 +148,86 @@ func TestMethodsErrors(t *testing.T) {
 	network := "tcp"
 	address := "127.1.1.1:3310"
 	if c, e = NewClient(network, address); e != nil {
-		t.Errorf("An error should not be returned")
+		t.Fatalf("An error should not be returned")
 	}
 	c.SetConnTimeout(500 * time.Microsecond)
 	// c.SetConnRetries(1)
 	if _, e = c.Ping(); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if _, ok := e.(*net.OpError); !ok {
-			t.Errorf("Expected *net.OpError want %q", e)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if _, ok := e.(*net.OpError); !ok {
+		t.Errorf("Expected *net.OpError want %q", e)
+	}
+
 	if _, e = c.Version(); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if _, ok := e.(*net.OpError); !ok {
-			t.Errorf("Expected *net.OpError want %q", e)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if _, ok := e.(*net.OpError); !ok {
+		t.Errorf("Expected *net.OpError want %q", e)
+	}
+
 	if _, e = c.Reload(); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if _, ok := e.(*net.OpError); !ok {
-			t.Errorf("Expected *net.OpError want %q", e)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if _, ok := e.(*net.OpError); !ok {
+		t.Errorf("Expected *net.OpError want %q", e)
+	}
+
 	if e = c.Shutdown(); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if _, ok := e.(*net.OpError); !ok {
-			t.Errorf("Expected *net.OpError want %q", e)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if _, ok := e.(*net.OpError); !ok {
+		t.Errorf("Expected *net.OpError want %q", e)
+	}
+
 	if _, e = c.Stats(); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if _, ok := e.(*net.OpError); !ok {
-			t.Errorf("Expected *net.OpError want %q", e)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if _, ok := e.(*net.OpError); !ok {
+		t.Errorf("Expected *net.OpError want %q", e)
+	}
+
 	if _, e = c.VersionCmds(); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if _, ok := e.(*net.OpError); !ok {
-			t.Errorf("Expected *net.OpError want %q", e)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if _, ok := e.(*net.OpError); !ok {
+		t.Errorf("Expected *net.OpError want %q", e)
+	}
+
 	if _, e = c.Scan("/tmp/bxx.syx"); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if _, ok := e.(*net.OpError); !ok {
-			t.Errorf("Expected *net.OpError want %q", e)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if _, ok := e.(*net.OpError); !ok {
+		t.Errorf("Expected *net.OpError want %q", e)
+	}
+
 	if _, e = c.ContScan("/tmp/bxx.syx"); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if _, ok := e.(*net.OpError); !ok {
-			t.Errorf("Expected *net.OpError want %q", e)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if _, ok := e.(*net.OpError); !ok {
+		t.Errorf("Expected *net.OpError want %q", e)
+	}
+
 	if _, e = c.MultiScan("/tmp/bxx.syx"); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if _, ok := e.(*net.OpError); !ok {
-			t.Errorf("Expected *net.OpError want %q", e)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if _, ok := e.(*net.OpError); !ok {
+		t.Errorf("Expected *net.OpError want %q", e)
+	}
+
 	expected := "stat /tmp/bxx.syx: no such file or directory"
 	if _, e = c.InStream("/tmp/bxx.syx"); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
-		}
+		t.Fatalf("An error should be returned")
 	}
+	if e.Error() != expected {
+		t.Errorf("Got %q want %q", e, expected)
+	}
+
 	if _, e = c.Fildes("/tmp/bxx.syx"); e == nil {
-		t.Errorf("An error should be returned")
-	} else {
-		if e.Error() != expected {
-			t.Errorf("Got %q want %q", e, expected)
-		}
+		t.Fatalf("An error should be returned")
+	}
+	if e.Error() != expected {
+		t.Errorf("Got %q want %q", e, expected)
 	}
 }
 
@@ -275,166 +276,163 @@ func TestMethods(t *testing.T) {
 	}
 
 	if c, e = NewClient(network, address); e != nil {
-		t.Errorf("An error should not be returned")
+		t.Fatalf("An error should not be returned")
 	}
 	if b, e = c.Ping(); e != nil {
-		t.Errorf("An error should not be returned")
-	} else {
-		if !b {
-			t.Errorf("Expected %t got %t", true, b)
-		}
+		t.Fatalf("An error should not be returned")
 	}
+	if !b {
+		t.Errorf("Expected %t got %t", true, b)
+	}
+
 	if rs, e = c.Version(); e != nil {
-		t.Errorf("An error should not be returned")
-	} else {
-		if !strings.HasPrefix(rs, "Clam") {
-			t.Errorf("Expected version starting with Clam, got %q", rs)
-		}
+		t.Fatalf("An error should not be returned")
 	}
+	if !strings.HasPrefix(rs, "Clam") {
+		t.Errorf("Expected version starting with Clam, got %q", rs)
+	}
+
 	if rs, e = c.Stats(); e != nil {
-		t.Errorf("An error should not be returned")
-	} else {
-		if !strings.HasPrefix(rs, "POOLS:") {
-			t.Errorf("Expected version starting with POOLS:, got %q", rs)
-		}
+		t.Fatalf("An error should not be returned")
 	}
+	if !strings.HasPrefix(rs, "POOLS:") {
+		t.Errorf("Expected version starting with POOLS:, got %q", rs)
+	}
+
 	if vcmds, e = c.VersionCmds(); e != nil {
-		t.Errorf("An error should not be returned")
-	} else {
-		if len(vcmds) == 0 {
-			t.Errorf("Expected a slice of strings:, got %q", vcmds)
-		} else {
-			if vcmds[0] != "SCAN" {
-				t.Errorf("Expected SCAN:, got %q", vcmds[0])
-			}
-		}
+		t.Fatalf("An error should not be returned")
 	}
+	if len(vcmds) == 0 {
+		t.Fatalf("Expected a slice of strings:, got %q", vcmds)
+	}
+	if vcmds[0] != "SCAN" {
+		t.Errorf("Expected SCAN:, got %q", vcmds[0])
+	}
+
 	if result, e = c.Scan(tfn); e != nil {
-		t.Errorf("Expected nil got %q", e)
+		t.Fatalf("Expected nil got %q", e)
+	}
+	l := len(result)
+	if l == 0 {
+		t.Errorf("Expected a slice of Response objects:, got %q", result)
+	} else if l > 1 {
+		t.Errorf("Expected a slice of Response 1 object:, got %d", l)
 	} else {
-		l := len(result)
-		if l == 0 {
-			t.Errorf("Expected a slice of Response objects:, got %q", result)
-		} else if l > 1 {
-			t.Errorf("Expected a slice of Response 1 object:, got %d", l)
-		} else {
-			mb := result[0]
-			if mb.Filename != tfn {
-				t.Errorf("Expected %q, got %q", tfn, mb.Filename)
-			}
-			if mb.Signature != "Eicar-Test-Signature" {
-				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
-			}
+		mb := result[0]
+		if mb.Filename != tfn {
+			t.Errorf("Expected %q, got %q", tfn, mb.Filename)
+		}
+		if mb.Signature != "Eicar-Test-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
 		}
 	}
-	if f, e = os.Open(tfn); e == nil {
-		defer f.Close()
-		if result, e = c.ScanReader(f); e != nil {
-			t.Errorf("Expected nil got %q", e)
-		} else {
-			l := len(result)
-			if l == 0 {
-				t.Errorf("Expected a slice of Response objects:, got %q", result)
-			} else if l > 1 {
-				t.Errorf("Expected a slice of Response 1 object:, got %d", l)
-			} else {
-				mb := result[0]
-				if mb.Filename != "stream" {
-					t.Errorf("Expected %q, got %q", "stream", mb.Filename)
-				}
-				if mb.Signature != "Eicar-Test-Signature" {
-					t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
-				}
-			}
-		}
-	} else {
+
+	if f, e = os.Open(tfn); e != nil {
+		t.Fatalf("Expected nil got %q", e)
+	}
+	defer f.Close()
+	if result, e = c.ScanReader(f); e != nil {
 		t.Errorf("Expected nil got %q", e)
 	}
+	l = len(result)
+	if l == 0 {
+		t.Errorf("Expected a slice of Response objects:, got %q", result)
+	} else if l > 1 {
+		t.Errorf("Expected a slice of Response 1 object:, got %d", l)
+	} else {
+		mb := result[0]
+		if mb.Filename != "stream" {
+			t.Errorf("Expected %q, got %q", "stream", mb.Filename)
+		}
+		if mb.Signature != "Eicar-Test-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+		}
+	}
+
 	if result, e = c.ContScan(path.Dir(tfn)); e != nil {
-		t.Errorf("Expected nil got %q", e)
+		t.Fatalf("Expected nil got %q", e)
+	}
+	l = len(result)
+	if l == 0 {
+		t.Errorf("Expected a slice of Response objects:, got %q", result)
+	} else if l > 2 {
+		t.Errorf("Expected a slice of Response 2 objects:, got %d", l)
 	} else {
-		l := len(result)
-		if l == 0 {
-			t.Errorf("Expected a slice of Response objects:, got %q", result)
-		} else if l > 2 {
-			t.Errorf("Expected a slice of Response 2 objects:, got %d", l)
-		} else {
-			mb := result[0]
-			if mb.Filename != tfn {
-				t.Errorf("Expected %q, got %q", tfn, mb.Filename)
-			}
-			if mb.Signature != "Eicar-Test-Signature" {
-				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
-			}
-			mb = result[1]
-			if mb.Signature != "Eicar-Test-Signature" {
-				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
-			}
+		mb := result[0]
+		if mb.Filename != tfn {
+			t.Errorf("Expected %q, got %q", tfn, mb.Filename)
+		}
+		if mb.Signature != "Eicar-Test-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+		}
+		mb = result[1]
+		if mb.Signature != "Eicar-Test-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
 		}
 	}
+
 	if result, e = c.MultiScan(tfn); e != nil {
-		t.Errorf("Expected nil got %q", e)
+		t.Fatalf("Expected nil got %q", e)
+	}
+	l = len(result)
+	if l == 0 {
+		t.Errorf("Expected a slice of Response objects:, got %q", result)
+	} else if l > 1 {
+		t.Errorf("Expected a slice of Response 1 object:, got %q", l)
 	} else {
-		l := len(result)
-		if l == 0 {
-			t.Errorf("Expected a slice of Response objects:, got %q", result)
-		} else if l > 1 {
-			t.Errorf("Expected a slice of Response 1 object:, got %q", l)
-		} else {
-			mb := result[0]
-			if mb.Filename != tfn {
-				t.Errorf("Expected %q, got %q", tfn, mb.Filename)
-			}
-			if mb.Signature != "Eicar-Test-Signature" {
-				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
-			}
+		mb := result[0]
+		if mb.Filename != tfn {
+			t.Errorf("Expected %q, got %q", tfn, mb.Filename)
+		}
+		if mb.Signature != "Eicar-Test-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
 		}
 	}
+
 	if result, e = c.InStream(fn); e != nil {
-		t.Errorf("An error should not be returned")
+		t.Fatalf("An error should not be returned")
+	}
+	l = len(result)
+	if l == 0 {
+		t.Errorf("Expected a slice of Response objects:, got %q", result)
+	} else if l > 1 {
+		t.Errorf("Expected a slice of Response 1 object:, got %q", l)
 	} else {
-		l := len(result)
-		if l == 0 {
-			t.Errorf("Expected a slice of Response objects:, got %q", result)
-		} else if l > 1 {
-			t.Errorf("Expected a slice of Response 1 object:, got %q", l)
-		} else {
-			mb := result[0]
-			if mb.Filename != "stream" {
-				t.Errorf("Expected %q, got %q", "stream", mb.Filename)
-			}
-			if mb.Signature != "Eicar-Test-Signature" {
-				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
-			}
+		mb := result[0]
+		if mb.Filename != "stream" {
+			t.Errorf("Expected %q, got %q", "stream", mb.Filename)
+		}
+		if mb.Signature != "Eicar-Test-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
 		}
 	}
+
 	if network == "unix" {
 		if result, e = c.Fildes(fn); e != nil {
-			t.Errorf("An error should not be returned")
+			t.Fatalf("An error should not be returned")
+		}
+		l := len(result)
+		if l == 0 {
+			t.Errorf("Expected a slice of Response objects:, got %q", result)
+		} else if l > 1 {
+			t.Errorf("Expected a slice of Response 1 object:, got %q", l)
 		} else {
-			l := len(result)
-			if l == 0 {
-				t.Errorf("Expected a slice of Response objects:, got %q", result)
-			} else if l > 1 {
-				t.Errorf("Expected a slice of Response 1 object:, got %q", l)
-			} else {
-				mb := result[0]
-				if !strings.HasPrefix(mb.Filename, "fd[") {
-					t.Errorf("Expected name starting with fd[, got %q", mb.Filename)
-				}
-				if mb.Signature != "Eicar-Test-Signature" {
-					t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
-				}
+			mb := result[0]
+			if !strings.HasPrefix(mb.Filename, "fd[") {
+				t.Errorf("Expected name starting with fd[, got %q", mb.Filename)
+			}
+			if mb.Signature != "Eicar-Test-Signature" {
+				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
 			}
 		}
 	}
 	if b, e = c.Reload(); e != nil {
-		t.Errorf("An error should not be returned")
-	} else {
-		if !b {
-			t.Errorf("Expected true, got %t", b)
-		}
+		t.Fatalf("An error should not be returned")
 	}
+	if !b {
+		t.Errorf("Expected true, got %t", b)
+	}
+
 }
 
 func copyFile(src, dst string, mode os.FileMode) error {

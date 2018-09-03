@@ -26,9 +26,19 @@ import (
 )
 
 const (
-	defaultTimeout    = 15 * time.Second
-	defaultSleep      = 1 * time.Second
-	defaultCmdTimeout = 1 * time.Minute
+	defaultTimeout      = 15 * time.Second
+	defaultSleep        = 1 * time.Second
+	defaultCmdTimeout   = 1 * time.Minute
+	defaultSock         = "/var/run/clamav/clamd.sock"
+	invalidRespErr      = "Invalid server response: %s"
+	unsupportedProtoErr = "Protocol: %s is not supported"
+	unixSockErr         = "The unix socket: %s does not exist"
+	statsErr            = "Stats not returned"
+	versionErr          = "Version not returned"
+	fldesErr            = "Fildes can not be called on a non unix connection"
+	reloadResp          = "RELOADING"
+	pingResp            = "PONG"
+	versionCmdsResp     = "COMMANDS: "
 	// ChunkSize the size for chunking INSTREAM files
 	ChunkSize = 1024
 )
@@ -91,7 +101,7 @@ func (c *Client) Ping() (b bool, err error) {
 		return
 	}
 
-	b = r == "PONG"
+	b = r == pingResp
 
 	return
 }
@@ -103,7 +113,7 @@ func (c *Client) Version() (v string, err error) {
 	}
 
 	if v == "" && err == nil {
-		err = fmt.Errorf("Version not returned")
+		err = fmt.Errorf(versionErr)
 		return
 	}
 
@@ -125,7 +135,7 @@ func (c *Client) Reload() (b bool, err error) {
 		return
 	}
 
-	b = r == "RELOADING"
+	b = r == reloadResp
 
 	return
 }
@@ -179,7 +189,7 @@ func (c *Client) Stats() (s string, err error) {
 	}
 
 	if s == "" && err == nil {
-		err = fmt.Errorf("Stats not returned")
+		err = fmt.Errorf(statsErr)
 		return
 	}
 
@@ -205,9 +215,9 @@ func (c *Client) VersionCmds() (r []string, err error) {
 		return
 	}
 
-	p := strings.Split(s, "COMMANDS: ")
+	p := strings.Split(s, versionCmdsResp)
 	if len(p) != 2 {
-		err = fmt.Errorf("Invalid Server Response: %s", s)
+		err = fmt.Errorf(invalidRespErr, s)
 		return
 	}
 	s = p[1]
@@ -288,7 +298,7 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err err
 	}
 
 	if cmd == protocol.Fildes && c.network != "unix" && c.network != "unixpacket" {
-		err = fmt.Errorf("Fildes can not be called on a non unix connection")
+		err = fmt.Errorf(fldesErr)
 		return
 	}
 
@@ -416,7 +426,7 @@ func (c *Client) processResponse(tc *textproto.Conn, conn net.Conn) (r []*Respon
 			if bytes.HasSuffix(lineb, []byte("ERROR\n")) {
 				err = fmt.Errorf("%s", bytes.TrimRight(lineb, " ERROR\n"))
 			} else {
-				err = fmt.Errorf("Invalid Server Response: %s", lineb)
+				err = fmt.Errorf(invalidRespErr, lineb)
 			}
 			break
 		}
@@ -482,17 +492,17 @@ func (c *Client) fildesScan(tc *textproto.Conn, conn net.Conn, p string) (err er
 func NewClient(network, address string) (c *Client, err error) {
 	if network == "" && address == "" {
 		network = "unix"
-		address = "/var/run/clamav/clamd.sock"
+		address = defaultSock
 	}
 
 	if network != "unix" && network != "unixpacket" && network != "tcp" && network != "tcp4" && network != "tcp6" {
-		err = fmt.Errorf("Protocol: %s is not supported", network)
+		err = fmt.Errorf(unsupportedProtoErr, network)
 		return
 	}
 
 	if network == "unix" || network == "unixpacket" {
 		if _, err = os.Stat(address); os.IsNotExist(err) {
-			err = fmt.Errorf("The unix socket: %s does not exist", address)
+			err = fmt.Errorf(unixSockErr, address)
 			return
 		}
 	}
