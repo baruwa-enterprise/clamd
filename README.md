@@ -38,7 +38,7 @@ $ ./bin/clamdscan
 To install the library
 
 ```console
-go get get github.com/baruwa-enterprise/clamd
+go get github.com/baruwa-enterprise/clamd
 ```
 
 You can then import it in your code
