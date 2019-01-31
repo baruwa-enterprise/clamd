@@ -314,7 +314,7 @@ func TestMethods(t *testing.T) {
 	}
 	l := len(result)
 	if l == 0 {
-		t.Errorf("Expected a slice of Response objects:, got %q", result)
+		t.Errorf("Expected a slice of Response objects:, got %v", result)
 	} else if l > 1 {
 		t.Errorf("Expected a slice of Response 1 object:, got %d", l)
 	} else {
@@ -336,7 +336,7 @@ func TestMethods(t *testing.T) {
 	}
 	l = len(result)
 	if l == 0 {
-		t.Errorf("Expected a slice of Response objects:, got %q", result)
+		t.Errorf("Expected a slice of Response objects:, got %v", result)
 	} else if l > 1 {
 		t.Errorf("Expected a slice of Response 1 object:, got %d", l)
 	} else {
@@ -354,7 +354,7 @@ func TestMethods(t *testing.T) {
 	}
 	l = len(result)
 	if l == 0 {
-		t.Errorf("Expected a slice of Response objects:, got %q", result)
+		t.Errorf("Expected a slice of Response objects:, got %v", result)
 	} else if l > 2 {
 		t.Errorf("Expected a slice of Response 2 objects:, got %d", l)
 	} else {
@@ -376,7 +376,7 @@ func TestMethods(t *testing.T) {
 	}
 	l = len(result)
 	if l == 0 {
-		t.Errorf("Expected a slice of Response objects:, got %q", result)
+		t.Errorf("Expected a slice of Response objects:, got %v", result)
 	} else if l > 1 {
 		t.Errorf("Expected a slice of Response 1 object:, got %q", l)
 	} else {
@@ -394,7 +394,7 @@ func TestMethods(t *testing.T) {
 	}
 	l = len(result)
 	if l == 0 {
-		t.Errorf("Expected a slice of Response objects:, got %q", result)
+		t.Errorf("Expected a slice of Response objects:, got %v", result)
 	} else if l > 1 {
 		t.Errorf("Expected a slice of Response 1 object:, got %q", l)
 	} else {
@@ -413,7 +413,7 @@ func TestMethods(t *testing.T) {
 		}
 		l := len(result)
 		if l == 0 {
-			t.Errorf("Expected a slice of Response objects:, got %q", result)
+			t.Errorf("Expected a slice of Response objects:, got %v", result)
 		} else if l > 1 {
 			t.Errorf("Expected a slice of Response 1 object:, got %q", l)
 		} else {
