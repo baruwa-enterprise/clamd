@@ -19,7 +19,7 @@ install:
   - sudo freshclam --verbose
   - sudo service clamav-daemon start
   - sudo service clamav-daemon status
-  - sudo ls -l /run/clamav
+  - sudo ls -l /run/clamav /var/run/clamav /var/run
 
 script:
   go test -race -coverprofile=coverage.txt -covermode=atomic ./...
