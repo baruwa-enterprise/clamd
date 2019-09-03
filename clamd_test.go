@@ -245,6 +245,9 @@ func TestMethods(t *testing.T) {
 		if _, e = os.Stat(address); os.IsNotExist(e) {
 			address = "/var/run/clamav/clamd.ctl"
 		}
+		if _, e = os.Stat(address); os.IsNotExist(e) {
+			return
+		}
 	}
 	if strings.HasPrefix(address, "/") {
 		network = "unix"
