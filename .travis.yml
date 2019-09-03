@@ -17,7 +17,7 @@ go:
 install:
   - make get-deps
   - sudo apt-get install clamav-daemon clamav-freshclam clamav-unofficial-sigs
-  - sudo freshclam --verbose
+  - sudo freshclam --verbose || exit 0
   - sudo service clamav-daemon start
   - sudo service clamav-daemon status
   - sudo ls -l /run/clamav /var/run/clamav /var/run
