@@ -16,12 +16,12 @@ go:
 
 install:
   - make get-deps
-  - sudo apt-get install clamav-daemon clamav-freshclam clamav-unofficial-sigs
+  - sudo apt-get install clamav-daemon clamav-freshclam clamav-unofficial-sigs tree
   - sudo service clamav-freshclam stop
   - sudo freshclam --verbose
   - sudo service clamav-daemon start
   - sudo service clamav-daemon status
-  - sudo ls -l /run/clamav /var/run/clamav /var/run
+  - sudo tree /var/run/clamav
 
 script:
   go test -race -coverprofile=coverage.txt -covermode=atomic ./...
