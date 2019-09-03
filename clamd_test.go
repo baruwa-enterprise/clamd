@@ -246,7 +246,7 @@ func TestMethods(t *testing.T) {
 			address = "/var/run/clamav/clamd.ctl"
 		}
 		if _, e = os.Stat(address); os.IsNotExist(e) {
-			address = ""
+			address = "/run/clamav/clamd.ctl"
 		}
 		if _, e = os.Stat(address); os.IsNotExist(e) {
 			return
