@@ -20,7 +20,7 @@ install:
   - sudo service clamav-freshclam stop
   - sudo freshclam --verbose
   - sudo service clamav-daemon start
-  - RETRY_MAX=10; for i in $(seq 1 ${RETRY_MAX}); do; [ -e /var/run/clamav/clamd.ctl ] && break; sleep $((10 * $i)); done
+  - RETRY_MAX=10; for i in $(seq 1 ${RETRY_MAX}); do [ -e /var/run/clamav/clamd.ctl ] && { break; }; sleep $((10 * $i)); done
   - sudo service clamav-daemon status
   - sudo tree /var/run/clamav
 
