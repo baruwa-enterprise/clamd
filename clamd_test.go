@@ -256,8 +256,8 @@ func TestMethods(t *testing.T) {
 	if gopath == "" {
 		gopath = build.Default.GOPATH
 	}
-	fn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.txt")
-	zfn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.tar.bz2")
+	fn := "./examples/eicar.txt"
+	zfn := "./examples/eicar.tar.bz2"
 	dir, e = ioutil.TempDir("", "")
 	if e != nil {
 		t.Errorf("Temp directory creation failed")
