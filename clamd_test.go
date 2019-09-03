@@ -11,7 +11,6 @@ package clamd
 
 import (
 	"fmt"
-	"go/build"
 	"io"
 	"io/ioutil"
 	"net"
@@ -251,10 +250,6 @@ func TestMethods(t *testing.T) {
 		network = "unix"
 	} else {
 		network = "tcp4"
-	}
-	gopath := os.Getenv("GOPATH")
-	if gopath == "" {
-		gopath = build.Default.GOPATH
 	}
 	fn := "./examples/eicar.txt"
 	zfn := "./examples/eicar.tar.bz2"
