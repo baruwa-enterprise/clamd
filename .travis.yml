@@ -18,6 +18,7 @@ install:
   - sudo apt-get install clamav-daemon clamav-freshclam clamav-unofficial-sigs
   - sudo freshclam --verbose
   - sudo service clamav-daemon start
+  - sudo service clamav-daemon status
 
 script:
   go test -race -coverprofile=coverage.txt -covermode=atomic ./...
