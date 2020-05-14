@@ -1,21 +1,10 @@
 language: go
 dist: bionic
 
-env:
-  - DEP_VERSION="0.4.1"
-
-before_install:
-  - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
-  - chmod +x $GOPATH/bin/dep
-
 go:
-  - 1.10.x
-  - 1.11.x
-  - 1.12.x
-  - master
+  - 1.x
 
 install:
-  - make get-deps
   - sudo apt-get install clamav-daemon clamav-freshclam clamav-unofficial-sigs tree
   - sudo service clamav-freshclam stop
   - sudo freshclam --verbose
