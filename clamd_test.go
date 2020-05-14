@@ -323,8 +323,8 @@ func TestMethods(t *testing.T) {
 		if mb.Filename != tfn {
 			t.Errorf("Expected %q, got %q", tfn, mb.Filename)
 		}
-		if mb.Signature != "Eicar-Test-Signature" {
-			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+		if mb.Signature != "Eicar-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Signature", mb.Signature)
 		}
 	}
 
@@ -345,8 +345,8 @@ func TestMethods(t *testing.T) {
 		if mb.Filename != "stream" {
 			t.Errorf("Expected %q, got %q", "stream", mb.Filename)
 		}
-		if mb.Signature != "Eicar-Test-Signature" {
-			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+		if mb.Signature != "Eicar-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Signature", mb.Signature)
 		}
 	}
 
@@ -363,12 +363,12 @@ func TestMethods(t *testing.T) {
 		if mb.Filename != tfn {
 			t.Errorf("Expected %q, got %q", tfn, mb.Filename)
 		}
-		if mb.Signature != "Eicar-Test-Signature" {
-			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+		if mb.Signature != "Eicar-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Signature", mb.Signature)
 		}
 		mb = result[1]
-		if mb.Signature != "Eicar-Test-Signature" {
-			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+		if mb.Signature != "Eicar-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Signature", mb.Signature)
 		}
 	}
 
@@ -385,8 +385,8 @@ func TestMethods(t *testing.T) {
 		if mb.Filename != tfn {
 			t.Errorf("Expected %q, got %q", tfn, mb.Filename)
 		}
-		if mb.Signature != "Eicar-Test-Signature" {
-			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+		if mb.Signature != "Eicar-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Signature", mb.Signature)
 		}
 	}
 
@@ -403,8 +403,8 @@ func TestMethods(t *testing.T) {
 		if mb.Filename != "stream" {
 			t.Errorf("Expected %q, got %q", "stream", mb.Filename)
 		}
-		if mb.Signature != "Eicar-Test-Signature" {
-			t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+		if mb.Signature != "Eicar-Signature" {
+			t.Errorf("Expected %q, got %q", "Eicar-Signature", mb.Signature)
 		}
 	}
 
@@ -422,8 +422,8 @@ func TestMethods(t *testing.T) {
 			if !strings.HasPrefix(mb.Filename, "fd[") {
 				t.Errorf("Expected name starting with fd[, got %q", mb.Filename)
 			}
-			if mb.Signature != "Eicar-Test-Signature" {
-				t.Errorf("Expected %q, got %q", "Eicar-Test-Signature", mb.Signature)
+			if mb.Signature != "Eicar-Signature" {
+				t.Errorf("Expected %q, got %q", "Eicar-Signature", mb.Signature)
 			}
 		}
 	}
