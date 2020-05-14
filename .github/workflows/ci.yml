@@ -1,0 +1,46 @@
+name: Ci
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Get dependencies
+      run: |
+        sudo apt-get install clamav-daemon clamav-freshclam clamav-unofficial-sigs tree
+        sudo service clamav-freshclam stop
+        sudo freshclam --verbose
+        sudo service clamav-daemon start
+        RETRY_MAX=10; for i in $(seq 1 ${RETRY_MAX}); do [ -e /var/run/clamav/clamd.ctl ] && { break; }; sleep $((10 * $i)); done
+        sudo service clamav-daemon status
+        sudo tree /var/run/clamav
+        go get -v -t -d ./...
+
+    - name: Build
+      run: go build -v .
+
+    - name: Test
+      run: go test -v .
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        file: ./coverage.txt
+        fail_ci_if_error: false
