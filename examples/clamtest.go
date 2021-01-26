@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go/build"
@@ -67,7 +68,8 @@ func ping(n, a string, w *sync.WaitGroup) {
 		return
 	}
 	c.SetConnTimeout(5 * time.Second)
-	r, e := c.Ping()
+	ctx := context.Background()
+	r, e := c.Ping(ctx)
 	if e != nil {
 		log.Println(e)
 		return
@@ -86,7 +88,8 @@ func stats(n, a string, w *sync.WaitGroup) {
 		return
 	}
 	c.SetConnTimeout(5 * time.Second)
-	s, e := c.Stats()
+	ctx := context.Background()
+	s, e := c.Stats(ctx)
 	if e != nil {
 		log.Println(e)
 		return
@@ -105,7 +108,8 @@ func version(n, a string, w *sync.WaitGroup) {
 		return
 	}
 	c.SetConnTimeout(5 * time.Second)
-	s, e := c.Version()
+	ctx := context.Background()
+	s, e := c.Version(ctx)
 	if e != nil {
 		log.Println(e)
 		return
@@ -124,7 +128,8 @@ func versionCmds(n, a string, w *sync.WaitGroup) {
 		return
 	}
 	c.SetConnTimeout(5 * time.Second)
-	s, e := c.VersionCmds()
+	ctx := context.Background()
+	s, e := c.VersionCmds(ctx)
 	if e != nil {
 		log.Println(e)
 		return
@@ -148,7 +153,8 @@ func instream(n, a string, w *sync.WaitGroup) {
 		gopath = build.Default.GOPATH
 	}
 	fn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.txt")
-	s, e := c.InStream(fn)
+	ctx := context.Background()
+	s, e := c.InStream(ctx, fn)
 	if e != nil {
 		log.Println("ERROR:", e)
 		return
@@ -173,7 +179,8 @@ func fildes(n, a string, w *sync.WaitGroup) {
 		gopath = build.Default.GOPATH
 	}
 	fn := path.Join(gopath, "src/github.com/baruwa-enterprise/clamd/examples/eicar.txt")
-	s, e := c.Fildes(fn)
+	ctx := context.Background()
+	s, e := c.Fildes(ctx, fn)
 	if e != nil {
 		log.Println("ERROR:", e)
 		return
@@ -193,7 +200,8 @@ func contscan(n, a string, w *sync.WaitGroup) {
 		return
 	}
 	c.SetConnTimeout(5 * time.Second)
-	s, e := c.ContScan("/var/spool/testfiles/")
+	ctx := context.Background()
+	s, e := c.ContScan(ctx, "/var/spool/testfiles/")
 	if e != nil {
 		log.Println("ERROR:", e)
 		return
@@ -215,7 +223,8 @@ func scan(n, a string, w *sync.WaitGroup) {
 		return
 	}
 	c.SetConnTimeout(5 * time.Second)
-	s, e := c.Scan("/var/spool/testfiles/install.log")
+	ctx := context.Background()
+	s, e := c.Scan(ctx, "/var/spool/testfiles/install.log")
 	if e != nil {
 		log.Println("ERROR:", e)
 		return
@@ -262,7 +271,8 @@ func main() {
 			return
 		}
 		c.SetConnTimeout(5 * time.Second)
-		r, e := c.Reload()
+		ctx := context.Background()
+		r, e := c.Reload(ctx)
 		if e != nil {
 			log.Fatal(e)
 		}

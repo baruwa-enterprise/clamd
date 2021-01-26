@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Andrew Colin Kissa <andrew@datopdog.io>
+// Copyright (C) 2018-2021 Andrew Colin Kissa <andrew@datopdog.io>
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -10,6 +10,7 @@ Clamd - Golang clamd client
 package clamd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -92,7 +93,8 @@ func TestBasics(t *testing.T) {
 		t.Errorf("Got %q want %q", c.address, address)
 	}
 	// Test Fildes
-	if _, e = c.Fildes("/tmp"); e == nil {
+	ctx := context.Background()
+	if _, e = c.Fildes(ctx, "/tmp"); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if e.Error() != fldesErr {
@@ -150,64 +152,65 @@ func TestMethodsErrors(t *testing.T) {
 		t.Fatalf("An error should not be returned")
 	}
 	c.SetConnTimeout(500 * time.Microsecond)
+	ctx := context.Background()
 	// c.SetConnRetries(1)
-	if _, e = c.Ping(); e == nil {
+	if _, e = c.Ping(ctx); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if _, ok := e.(*net.OpError); !ok {
 		t.Errorf("Expected *net.OpError want %q", e)
 	}
 
-	if _, e = c.Version(); e == nil {
+	if _, e = c.Version(ctx); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if _, ok := e.(*net.OpError); !ok {
 		t.Errorf("Expected *net.OpError want %q", e)
 	}
 
-	if _, e = c.Reload(); e == nil {
+	if _, e = c.Reload(ctx); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if _, ok := e.(*net.OpError); !ok {
 		t.Errorf("Expected *net.OpError want %q", e)
 	}
 
-	if e = c.Shutdown(); e == nil {
+	if e = c.Shutdown(ctx); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if _, ok := e.(*net.OpError); !ok {
 		t.Errorf("Expected *net.OpError want %q", e)
 	}
 
-	if _, e = c.Stats(); e == nil {
+	if _, e = c.Stats(ctx); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if _, ok := e.(*net.OpError); !ok {
 		t.Errorf("Expected *net.OpError want %q", e)
 	}
 
-	if _, e = c.VersionCmds(); e == nil {
+	if _, e = c.VersionCmds(ctx); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if _, ok := e.(*net.OpError); !ok {
 		t.Errorf("Expected *net.OpError want %q", e)
 	}
 
-	if _, e = c.Scan("/tmp/bxx.syx"); e == nil {
+	if _, e = c.Scan(ctx, "/tmp/bxx.syx"); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if _, ok := e.(*net.OpError); !ok {
 		t.Errorf("Expected *net.OpError want %q", e)
 	}
 
-	if _, e = c.ContScan("/tmp/bxx.syx"); e == nil {
+	if _, e = c.ContScan(ctx, "/tmp/bxx.syx"); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if _, ok := e.(*net.OpError); !ok {
 		t.Errorf("Expected *net.OpError want %q", e)
 	}
 
-	if _, e = c.MultiScan("/tmp/bxx.syx"); e == nil {
+	if _, e = c.MultiScan(ctx, "/tmp/bxx.syx"); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if _, ok := e.(*net.OpError); !ok {
@@ -215,14 +218,14 @@ func TestMethodsErrors(t *testing.T) {
 	}
 
 	expected := "stat /tmp/bxx.syx: no such file or directory"
-	if _, e = c.InStream("/tmp/bxx.syx"); e == nil {
+	if _, e = c.InStream(ctx, "/tmp/bxx.syx"); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if e.Error() != expected {
 		t.Errorf("Got %q want %q", e, expected)
 	}
 
-	if _, e = c.Fildes("/tmp/bxx.syx"); e == nil {
+	if _, e = c.Fildes(ctx, "/tmp/bxx.syx"); e == nil {
 		t.Fatalf("An error should be returned")
 	}
 	if e.Error() != expected {
@@ -279,28 +282,29 @@ func TestMethods(t *testing.T) {
 	if c, e = NewClient(network, address); e != nil {
 		t.Fatalf("An error should not be returned")
 	}
-	if b, e = c.Ping(); e != nil {
+	ctx := context.Background()
+	if b, e = c.Ping(ctx); e != nil {
 		t.Fatalf("An error should not be returned")
 	}
 	if !b {
 		t.Errorf("Expected %t got %t", true, b)
 	}
 
-	if rs, e = c.Version(); e != nil {
+	if rs, e = c.Version(ctx); e != nil {
 		t.Fatalf("An error should not be returned")
 	}
 	if !strings.HasPrefix(rs, "Clam") {
 		t.Errorf("Expected version starting with Clam, got %q", rs)
 	}
 
-	if rs, e = c.Stats(); e != nil {
+	if rs, e = c.Stats(ctx); e != nil {
 		t.Fatalf("An error should not be returned")
 	}
 	if !strings.HasPrefix(rs, "POOLS:") {
 		t.Errorf("Expected version starting with POOLS:, got %q", rs)
 	}
 
-	if vcmds, e = c.VersionCmds(); e != nil {
+	if vcmds, e = c.VersionCmds(ctx); e != nil {
 		t.Fatalf("An error should not be returned")
 	}
 	if len(vcmds) == 0 {
@@ -310,7 +314,7 @@ func TestMethods(t *testing.T) {
 		t.Errorf("Expected SCAN:, got %q", vcmds[0])
 	}
 
-	if result, e = c.Scan(tfn); e != nil {
+	if result, e = c.Scan(ctx, tfn); e != nil {
 		t.Fatalf("Expected nil got %q", e)
 	}
 	l := len(result)
@@ -332,7 +336,7 @@ func TestMethods(t *testing.T) {
 		t.Fatalf("Expected nil got %q", e)
 	}
 	defer f.Close()
-	if result, e = c.ScanReader(f); e != nil {
+	if result, e = c.ScanReader(ctx, f); e != nil {
 		t.Errorf("Expected nil got %q", e)
 	}
 	l = len(result)
@@ -350,7 +354,7 @@ func TestMethods(t *testing.T) {
 		}
 	}
 
-	if result, e = c.ContScan(path.Dir(tfn)); e != nil {
+	if result, e = c.ContScan(ctx, path.Dir(tfn)); e != nil {
 		t.Fatalf("Expected nil got %q", e)
 	}
 	l = len(result)
@@ -372,7 +376,7 @@ func TestMethods(t *testing.T) {
 		}
 	}
 
-	if result, e = c.MultiScan(tfn); e != nil {
+	if result, e = c.MultiScan(ctx, tfn); e != nil {
 		t.Fatalf("Expected nil got %q", e)
 	}
 	l = len(result)
@@ -390,7 +394,7 @@ func TestMethods(t *testing.T) {
 		}
 	}
 
-	if result, e = c.InStream(fn); e != nil {
+	if result, e = c.InStream(ctx, fn); e != nil {
 		t.Fatalf("An error should not be returned")
 	}
 	l = len(result)
@@ -409,7 +413,7 @@ func TestMethods(t *testing.T) {
 	}
 
 	if network == "unix" {
-		if result, e = c.Fildes(fn); e != nil {
+		if result, e = c.Fildes(ctx, fn); e != nil {
 			t.Fatalf("An error should not be returned")
 		}
 		l := len(result)
@@ -427,7 +431,7 @@ func TestMethods(t *testing.T) {
 			}
 		}
 	}
-	if b, e = c.Reload(); e != nil {
+	if b, e = c.Reload(ctx); e != nil {
 		t.Fatalf("An error should not be returned")
 	}
 	if !b {

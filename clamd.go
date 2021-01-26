@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Andrew Colin Kissa <andrew@datopdog.io>
+// Copyright (C) 2018-2021 Andrew Colin Kissa <andrew@datopdog.io>
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -11,6 +11,7 @@ package clamd
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -91,9 +92,9 @@ func (c *Client) SetConnSleep(s time.Duration) {
 }
 
 // Ping sends a ping to the server
-func (c *Client) Ping() (b bool, err error) {
+func (c *Client) Ping(ctx context.Context) (b bool, err error) {
 	var r string
-	if r, err = c.basicCmd(protocol.Ping); err != nil {
+	if r, err = c.basicCmd(ctx, protocol.Ping); err != nil {
 		return
 	}
 
@@ -107,8 +108,8 @@ func (c *Client) Ping() (b bool, err error) {
 }
 
 // Version returns the server version
-func (c *Client) Version() (v string, err error) {
-	if v, err = c.basicCmd(protocol.Version); err != nil {
+func (c *Client) Version(ctx context.Context) (v string, err error) {
+	if v, err = c.basicCmd(ctx, protocol.Version); err != nil {
 		return
 	}
 
@@ -125,9 +126,9 @@ func (c *Client) Version() (v string, err error) {
 }
 
 // Reload the server
-func (c *Client) Reload() (b bool, err error) {
+func (c *Client) Reload(ctx context.Context) (b bool, err error) {
 	var r string
-	if r, err = c.basicCmd(protocol.Reload); err != nil {
+	if r, err = c.basicCmd(ctx, protocol.Reload); err != nil {
 		return
 	}
 
@@ -141,50 +142,50 @@ func (c *Client) Reload() (b bool, err error) {
 }
 
 // Shutdown stops the server
-func (c *Client) Shutdown() (err error) {
-	_, err = c.basicCmd(protocol.Shutdown)
+func (c *Client) Shutdown(ctx context.Context) (err error) {
+	_, err = c.basicCmd(ctx, protocol.Shutdown)
 	return
 }
 
 // Scan a file or directory
-func (c *Client) Scan(p string) (r []*Response, err error) {
-	r, err = c.fileCmd(protocol.Scan, p)
+func (c *Client) Scan(ctx context.Context, p string) (r []*Response, err error) {
+	r, err = c.fileCmd(ctx, protocol.Scan, p)
 	return
 }
 
 // ScanReader scans an io.reader
-func (c *Client) ScanReader(i io.Reader) (r []*Response, err error) {
-	r, err = c.readerCmd(i)
+func (c *Client) ScanReader(ctx context.Context, i io.Reader) (r []*Response, err error) {
+	r, err = c.readerCmd(ctx, i)
 	return
 }
 
 // ContScan a file or directory
-func (c *Client) ContScan(p string) (r []*Response, err error) {
-	r, err = c.fileCmd(protocol.ContScan, p)
+func (c *Client) ContScan(ctx context.Context, p string) (r []*Response, err error) {
+	r, err = c.fileCmd(ctx, protocol.ContScan, p)
 	return
 }
 
 // MultiScan a file or directory
-func (c *Client) MultiScan(p string) (r []*Response, err error) {
-	r, err = c.fileCmd(protocol.MultiScan, p)
+func (c *Client) MultiScan(ctx context.Context, p string) (r []*Response, err error) {
+	r, err = c.fileCmd(ctx, protocol.MultiScan, p)
 	return
 }
 
 // InStream scan a stream
-func (c *Client) InStream(p string) (r []*Response, err error) {
-	r, err = c.fileCmd(protocol.Instream, p)
+func (c *Client) InStream(ctx context.Context, p string) (r []*Response, err error) {
+	r, err = c.fileCmd(ctx, protocol.Instream, p)
 	return
 }
 
 // Fildes scan a FD
-func (c *Client) Fildes(p string) (r []*Response, err error) {
-	r, err = c.fileCmd(protocol.Fildes, p)
+func (c *Client) Fildes(ctx context.Context, p string) (r []*Response, err error) {
+	r, err = c.fileCmd(ctx, protocol.Fildes, p)
 	return
 }
 
 // Stats returns server stats
-func (c *Client) Stats() (s string, err error) {
-	if s, err = c.basicCmd(protocol.Stats); err != nil {
+func (c *Client) Stats(ctx context.Context) (s string, err error) {
+	if s, err = c.basicCmd(ctx, protocol.Stats); err != nil {
 		return
 	}
 
@@ -209,9 +210,9 @@ func (c *Client) Stats() (s string, err error) {
 // }
 
 // VersionCmds returns the supported cmds
-func (c *Client) VersionCmds() (r []string, err error) {
+func (c *Client) VersionCmds(ctx context.Context) (r []string, err error) {
 	var s string
-	if s, err = c.basicCmd(protocol.VersionCmds); err != nil {
+	if s, err = c.basicCmd(ctx, protocol.VersionCmds); err != nil {
 		return
 	}
 
@@ -225,13 +226,13 @@ func (c *Client) VersionCmds() (r []string, err error) {
 	return
 }
 
-func (c *Client) dial() (conn net.Conn, err error) {
+func (c *Client) dial(ctx context.Context) (conn net.Conn, err error) {
 	d := &net.Dialer{
 		Timeout: c.connTimeout,
 	}
 
 	for i := 0; i <= c.connRetries; i++ {
-		conn, err = d.Dial(c.network, c.address)
+		conn, err = d.DialContext(ctx, c.network, c.address)
 		if e, ok := err.(net.Error); ok && e.Timeout() {
 			time.Sleep(c.connSleep)
 			continue
@@ -241,13 +242,13 @@ func (c *Client) dial() (conn net.Conn, err error) {
 	return
 }
 
-func (c *Client) basicCmd(cmd protocol.Command) (r string, err error) {
+func (c *Client) basicCmd(ctx context.Context, cmd protocol.Command) (r string, err error) {
 	var conn net.Conn
 	var l []byte
 	var b strings.Builder
 	var tc *textproto.Conn
 
-	conn, err = c.dial()
+	conn, err = c.dial(ctx)
 	if err != nil {
 		return
 	}
@@ -285,7 +286,7 @@ func (c *Client) basicCmd(cmd protocol.Command) (r string, err error) {
 	return
 }
 
-func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err error) {
+func (c *Client) fileCmd(ctx context.Context, cmd protocol.Command, p string) (r []*Response, err error) {
 	var id uint
 	var conn net.Conn
 	var tc *textproto.Conn
@@ -301,7 +302,7 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err err
 		return
 	}
 
-	conn, err = c.dial()
+	conn, err = c.dial(ctx)
 	if err != nil {
 		return
 	}
@@ -337,11 +338,11 @@ func (c *Client) fileCmd(cmd protocol.Command, p string) (r []*Response, err err
 	return
 }
 
-func (c *Client) readerCmd(i io.Reader) (r []*Response, err error) {
+func (c *Client) readerCmd(ctx context.Context, i io.Reader) (r []*Response, err error) {
 	var conn net.Conn
 	var tc *textproto.Conn
 
-	if conn, err = c.dial(); err != nil {
+	if conn, err = c.dial(ctx); err != nil {
 		return
 	}
 
