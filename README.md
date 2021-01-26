@@ -5,7 +5,7 @@ Golang Clamd Client
 [![Ci](https://github.com/baruwa-enterprise/clamd/workflows/Ci/badge.svg)](https://github.com/baruwa-enterprise/clamd/actions?query=workflow%3ACi)
 [![codecov](https://codecov.io/gh/baruwa-enterprise/clamd/branch/master/graph/badge.svg)](https://codecov.io/gh/baruwa-enterprise/clamd)
 [![Go Report Card](https://goreportcard.com/badge/github.com/baruwa-enterprise/clamd)](https://goreportcard.com/report/github.com/baruwa-enterprise/clamd)
-[![GoDoc](https://godoc.org/github.com/baruwa-enterprise/clamd?status.svg)](https://godoc.org/github.com/baruwa-enterprise/clamd)
+[![Go Reference](https://pkg.go.dev/badge/github.com/baruwa-enterprise/clamd.svg)](https://pkg.go.dev/github.com/baruwa-enterprise/clamd)
 [![MPLv2 License](https://img.shields.io/badge/license-MPLv2-blue.svg?style=flat-square)](https://www.mozilla.org/MPL/2.0/)
 
 ## Description
