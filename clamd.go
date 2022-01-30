@@ -377,14 +377,16 @@ func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader
 
 	fmt.Fprintf(tc.W, "n%s\n", cmd)
 	b := make([]byte, 4)
-	for {
+	eof := false
+	for !eof {
 		buf := make([]byte, ChunkSize)
 		if n, err = f.Read(buf); err != nil {
 			if err == io.EOF {
 				err = nil
-				break
+				eof = true
+			} else {
+				return
 			}
-			return
 		}
 		if n > 0 {
 			conn.SetDeadline(time.Now().Add(c.cmdTimeout))
