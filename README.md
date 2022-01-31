@@ -15,7 +15,7 @@ Clamd client protocol used by ClamAV.
 
 ## Requirements
 
-* Golang 1.10.x or higher
+* Golang 1.16.x or higher
 
 ## Getting started
 
