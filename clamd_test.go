@@ -19,6 +19,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 )
 
@@ -231,6 +232,10 @@ func TestMethodsErrors(t *testing.T) {
 	if e.Error() != expected {
 		t.Errorf("Got %q want %q", e, expected)
 	}
+
+	if _, e = c.ScanReader(ctx, iotest.ErrReader(io.ErrUnexpectedEOF)); e != io.ErrUnexpectedEOF {
+		t.Errorf("Expected ErrUnexpectedEOF got %q", e)
+	}
 }
 
 func TestMethods(t *testing.T) {
@@ -438,6 +443,39 @@ func TestMethods(t *testing.T) {
 		t.Errorf("Expected true, got %t", b)
 	}
 
+	t.Run("read with early EOF", func(t *testing.T) {
+		// Most readers only return io.EOF, when nothing has been read. Some readers
+		// however return io.EOF already when data is returned. This case needs to work
+		// as well.
+
+		if f, e = os.Open(tfn); e != nil {
+			t.Fatalf("Expected nil got %q", e)
+		}
+		defer f.Close()
+
+		stat, err := f.Stat()
+		if err != nil {
+			t.Fatalf("Expected nil got %q", e)
+		}
+
+		if result, e = c.ScanReader(ctx, &eofReader{f, stat.Size()}); e != nil {
+			t.Errorf("Expected nil got %q", e)
+		}
+		l = len(result)
+		if l == 0 {
+			t.Errorf("Expected a slice of Response objects:, got %v", result)
+		} else if l > 1 {
+			t.Errorf("Expected a slice of Response 1 object:, got %d", l)
+		} else {
+			mb := result[0]
+			if mb.Filename != "stream" {
+				t.Errorf("Expected %q, got %q", "stream", mb.Filename)
+			}
+			if mb.Signature != "Eicar-Signature" {
+				t.Errorf("Expected %q, got %q", "Eicar-Signature", mb.Signature)
+			}
+		}
+	})
 }
 
 func copyFile(src, dst string, mode os.FileMode) error {
@@ -459,4 +497,21 @@ func copyFile(src, dst string, mode os.FileMode) error {
 		return err
 	}
 	return os.Chmod(dst, mode)
+}
+
+type eofReader struct {
+	source io.Reader
+	size   int64
+}
+
+func (e *eofReader) Read(p []byte) (n int, err error) {
+	if n, err = e.source.Read(p); err != nil {
+		return
+	}
+
+	e.size -= int64(n)
+	if e.size <= 0 {
+		err = io.EOF
+	}
+	return
 }
