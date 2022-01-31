@@ -19,6 +19,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 )
 
@@ -230,6 +231,10 @@ func TestMethodsErrors(t *testing.T) {
 	}
 	if e.Error() != expected {
 		t.Errorf("Got %q want %q", e, expected)
+	}
+
+	if _, e = c.ScanReader(ctx, iotest.ErrReader(io.ErrUnexpectedEOF)); e != io.ErrUnexpectedEOF {
+		t.Errorf("Expected ErrUnexpectedEOF got %q", e)
 	}
 }
 
@@ -500,7 +505,10 @@ type eofReader struct {
 }
 
 func (e *eofReader) Read(p []byte) (n int, err error) {
-	n, err = e.source.Read(p)
+	if n, err = e.source.Read(p); err != nil {
+		return
+	}
+
 	e.size -= int64(n)
 	if e.size <= 0 {
 		err = io.EOF
