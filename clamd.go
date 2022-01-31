@@ -374,10 +374,11 @@ func (c *Client) readerCmd(ctx context.Context, i io.Reader) (r []*Response, err
 
 func (c *Client) streamCmd(tc *textproto.Conn, cmd protocol.Command, f io.Reader, conn net.Conn) (err error) {
 	var n int
+	var eof bool
 
 	fmt.Fprintf(tc.W, "n%s\n", cmd)
 	b := make([]byte, 4)
-	eof := false
+
 	for !eof {
 		buf := make([]byte, ChunkSize)
 		if n, err = f.Read(buf); err != nil {
