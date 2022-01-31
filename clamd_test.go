@@ -35,6 +35,28 @@ var TestcheckErrors = []checkErrorTestKey{
 	{s, errNf},
 }
 
+func getaddr() (address, network string, err error) {
+	address = os.Getenv("CLAMD_ADDRESS")
+	if address == "" {
+		address = "/opt/local/var/run/clamav/clamd.socket"
+		if _, err = os.Stat(address); os.IsNotExist(err) {
+			address = "/var/run/clamav/clamd.ctl"
+		}
+		if _, err = os.Stat(address); os.IsNotExist(err) {
+			address = "/run/clamav/clamd.ctl"
+		}
+		if _, err = os.Stat(address); os.IsNotExist(err) {
+			return
+		}
+	}
+	if strings.HasPrefix(address, "/") {
+		network = "unix"
+	} else {
+		network = "tcp4"
+	}
+	return
+}
+
 func TestCheckErrors(t *testing.T) {
 	for _, tt := range TestcheckErrors {
 		if e := checkError(tt.in); e != tt.out {
@@ -233,6 +255,15 @@ func TestMethodsErrors(t *testing.T) {
 		t.Errorf("Got %q want %q", e, expected)
 	}
 
+	if address, network, e = getaddr(); e != nil {
+		t.Fatalf("An error should not be returned")
+	}
+
+	if c, e = NewClient(network, address); e != nil {
+		t.Fatalf("An error should not be returned")
+	}
+	c.SetConnTimeout(500 * time.Microsecond)
+
 	if _, e = c.ScanReader(ctx, iotest.ErrReader(io.ErrUnexpectedEOF)); e != io.ErrUnexpectedEOF {
 		t.Errorf("Expected ErrUnexpectedEOF got %q", e)
 	}
@@ -247,24 +278,10 @@ func TestMethods(t *testing.T) {
 	var vcmds []string
 	var network, address, rs, dir string
 
-	address = os.Getenv("CLAMD_ADDRESS")
-	if address == "" {
-		address = "/opt/local/var/run/clamav/clamd.socket"
-		if _, e = os.Stat(address); os.IsNotExist(e) {
-			address = "/var/run/clamav/clamd.ctl"
-		}
-		if _, e = os.Stat(address); os.IsNotExist(e) {
-			address = "/run/clamav/clamd.ctl"
-		}
-		if _, e = os.Stat(address); os.IsNotExist(e) {
-			return
-		}
+	if address, network, e = getaddr(); e != nil {
+		t.Fatalf("An error should not be returned")
 	}
-	if strings.HasPrefix(address, "/") {
-		network = "unix"
-	} else {
-		network = "tcp4"
-	}
+
 	fn := "./examples/eicar.txt"
 	zfn := "./examples/eicar.tar.bz2"
 	dir, e = ioutil.TempDir("", "")
